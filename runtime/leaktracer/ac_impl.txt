@@ -1,0 +1,577 @@
+/* -*- mode: c++ -*-
+ * ac_impl.c - Implementation of tracer_interface.h.
+ *
+ * History:
+ *
+ * Created on 2015-1-3 by Hengyang Yu.
+ *   Initial craft.
+ *
+ * Modified on 2015-1-15 by Hengyang Yu.
+ *   Support for mutator events and obj access events.
+ *
+ * Modified on 2015-1-16 by Hengyang Yu.
+ *   Support for dead and move objects. Implement ac_dead_object() and
+ *   ac_move_object().
+ *
+ * Modified on 2015-1-19 by Hengyang Yu.
+ *   Bug fix. Write out move buffer in gc_end(), since both minor and
+ *   major gc collectors will move live objects.
+ *
+ * Modified on 2015-1-21 by Hengyang Yu.
+ *   Statistic information block after AC_APP_END.
+ */
+#define LOG_DOMAIN "ac"
+#include <cxxlog.h>
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <vector>
+#include <string>
+
+#include "../thread/gc_thread.h"
+#include "../thread/mutator.h"
+#include "../thread/collector.h"
+#include "../common/gc_properties.h"
+#include "../gen/gen.h"
+
+
+#include "ac_interface.h"
+#include "ac_defs.h"
+
+#include <assert.h>
+
+/* undefine this to actually write data onto disk */
+/* #define NO_DISK_WRITE */
+
+using std::vector;
+using std::string;
+
+/*
+ * Private data.
+ */
+static FILE *g_fp = NULL;      /* file output stream */
+static FILE *g_method_file = NULL;
+
+/* static int64 g_poison_total_time = 0; */
+static const char *g_path = "/home/yang/ac.data";
+static const char *g_method_file_path = "/home/yang/ac.methodfile";
+
+static const unsigned g_app_start = AC_APP_START;
+static const unsigned g_app_end = AC_APP_END;
+static const unsigned g_gc_start = AC_GC_START;
+static const unsigned g_gc_end = AC_GC_END;
+
+static unsigned g_lock = FREE_LOCK; /* lock of the following four counters */
+static unsigned long long g_num_new_obj = 0; /* number of new objects */
+static unsigned long long g_num_dead_obj = 0;
+static unsigned long long g_num_move_obj = 0;
+static unsigned long long g_num_access = 0;
+static int g_num_mutator = 0;
+
+
+
+static bool g_gc_flag = false;	/* true if in GC */
+static bool g_gc_wrapup_flag = false; /* true if ac_gc_wrapup() has been called */
+
+
+struct MethodRecord {
+	MethodRecord(void *code_start, unsigned code_size, const char *class_name, const char *method_name)
+		:_code_start((unsigned)code_start),
+		 _code_end((unsigned)code_start+code_size),
+		 _name(class_name + string("::") + method_name) {}
+
+	unsigned _code_start;	/* compiled java method start address */
+	unsigned _code_end;	/* ... end address */
+	string _name;		/* method name format: class::method */
+};
+
+struct TypeRecord {
+	TypeRecord(void *vt, unsigned size, const char *name)
+		:_vtable(vt),
+		 _size(size),
+		 _name(name) {}
+
+	void *_vtable;
+	unsigned _size;
+	string _name;
+};
+
+static vector<MethodRecord*> g_methods;
+static vector<TypeRecord*> g_types;
+
+
+
+/*
+ * Helper functions.
+ */
+static void open_output_stream();
+static void close_output_stream();
+
+static FORCE_INLINE unsigned do_write(const void *buf, unsigned elem_size, unsigned elem_count)
+{
+	assert(g_fp && buf);
+
+#ifdef NO_DISK_WRITE
+	return elem_count;
+#else
+	return fwrite(buf, elem_size, elem_count, g_fp);
+#endif
+}
+
+static FORCE_INLINE void flush_buffer(ACBuffer *bufp)
+{
+	if (bufp->count) {
+		do_write(bufp->buf, sizeof bufp->buf[0], bufp->count);
+		bufp->count = 0;
+	}
+}
+
+static FORCE_INLINE void record_obj_common(ACBuffer *bufp, unsigned addr)
+{
+	if (bufp->count >= AC_BUFFER_SIZE_NELEM) {
+
+		assert(bufp->count == AC_BUFFER_SIZE_NELEM);
+
+		do_write(bufp->buf, sizeof bufp->buf[0], bufp->count);
+		bufp->count = 0;
+	}
+	bufp->buf[bufp->count++] = addr;
+}
+
+
+static FORCE_INLINE void record_obj_common2(ACBuffer *bufp, unsigned data1, unsigned data2)
+{
+	if (bufp->count + 1 >= AC_BUFFER_SIZE_NELEM) {
+
+		assert(bufp->count == AC_BUFFER_SIZE_NELEM || bufp->count + 1 == AC_BUFFER_SIZE_NELEM);
+
+		do_write(bufp->buf, sizeof bufp->buf[0], bufp->count);
+		bufp->count = 0;
+	}
+	bufp->buf[bufp->count]   = data1;
+	bufp->buf[bufp->count+1] = data2;
+	bufp->count += 2;
+}
+
+
+static FORCE_INLINE void record_obj_common3(ACBuffer *bufp, unsigned data1, unsigned data2, unsigned data3)
+{
+	if (bufp->count + 2 >= AC_BUFFER_SIZE_NELEM) {
+		do_write(bufp->buf, sizeof bufp->buf[0], bufp->count);
+		bufp->count = 0;
+	}
+	bufp->buf[bufp->count]   = data1;
+	bufp->buf[bufp->count+1] = data2;
+	bufp->buf[bufp->count+2] = data3;
+	bufp->count += 3;
+}
+
+
+
+static FORCE_INLINE void record_obj_common4(ACBuffer *bufp, unsigned data1, unsigned data2, unsigned data3, unsigned data4)
+{
+	if (bufp->count + 3 >= AC_BUFFER_SIZE_NELEM) {
+		do_write(bufp->buf, sizeof bufp->buf[0], bufp->count);
+		bufp->count = 0;
+	}
+	bufp->buf[bufp->count]   = data1;
+	bufp->buf[bufp->count+1] = data2;
+	bufp->buf[bufp->count+2] = data3;
+	bufp->buf[bufp->count+3] = data4;
+	bufp->count += 4;
+}
+
+
+
+
+void ac_flush_collectors_buf(GC *gc)
+{
+	assert(gc);
+
+	for (unsigned i = 0; i != gc->num_collectors; i++)
+		flush_buffer(gc->collectors[i]->acbuf);
+}
+
+
+
+
+void ac_method_compiled(void *code_start, unsigned code_size,
+			const char *class_name, const char *method_name)
+{
+	/* printf("g_method_file = %p\n", g_method_file); */
+	/* assert(g_method_file); */
+
+	/* fprintf(g_method_file, "%8X %8X %s::%s\n", (unsigned)code_start, */
+	/* 	(unsigned)code_start + code_size, class_name, method_name); */
+	g_methods.push_back(new MethodRecord(code_start, code_size, class_name, method_name));
+}
+
+
+
+
+void ac_access_object(unsigned addr)
+{
+	Allocator *allocator = (Allocator*)gc_get_tls();
+
+	assert(allocator);
+	assert(!g_gc_wrapup_flag);
+
+	record_obj_common(allocator->acbuf, addr|AC_ACCESS_OBJECT);
+	allocator->num_access++;
+}
+
+
+
+
+void ac_dead_object(unsigned addr)
+{
+	Allocator *allocator = (Allocator*)gc_get_tls();
+
+	assert(allocator);
+	assert(g_gc_flag);
+
+	record_obj_common(allocator->acbuf, addr|AC_DEAD_OBJECT);
+	allocator->num_dead_obj++;
+}
+
+
+
+
+void ac_move_object(unsigned old_addr, unsigned new_addr)
+{
+	Allocator *collector = (Allocator*)gc_get_tls();
+
+	assert(collector);
+	assert(g_gc_flag);
+
+	record_obj_common2(collector->acbuf, old_addr|AC_MOVE_OBJECT, new_addr);
+	collector->num_move_obj++;
+}
+
+
+
+
+void ac_new_object(unsigned site, unsigned addr)
+{
+	Allocator *mutator = (Allocator*)gc_get_tls();
+
+	assert(mutator);
+	assert(!g_gc_wrapup_flag);
+
+	/* record a triple: <addr, site, vtable>, see layout of ManagedObject */
+	record_obj_common3(mutator->acbuf, addr, site, *(unsigned*)addr);
+	mutator->num_new_obj++;
+}
+
+
+
+void ac_new_array_object(unsigned site, unsigned addr, unsigned size)
+{
+	Allocator *mutator = (Allocator*)gc_get_tls();
+
+	assert(mutator);
+	assert(!g_gc_wrapup_flag);
+
+	/*
+	 * record a quad: <addr, site, vtable | 0x1, size>, see layout of ManagedObject
+	 * vtable | 0x1 tells the offline analyzer that this is a array object and its size
+	 * follows its vtable immediately.
+	 */
+	record_obj_common4(mutator->acbuf, addr, site, *(unsigned*)addr|0x1, size);
+	mutator->num_new_obj++;
+}
+
+
+
+
+void ac_new_vtable(void *vtable, unsigned instance_size, const char *clss_name)
+{
+	//fprintf(stderr, "%8X %8u %s\n", (unsigned)vtable, instance_size, clss_name);
+	//fprintf(g_method_file, "%8X %8u %s\n", (unsigned)vtable, instance_size, clss_name);
+	g_types.push_back(new TypeRecord(vtable, instance_size, clss_name));
+}
+
+
+
+
+void ac_mutator_start(Mutator *mutator)
+{
+	assert(mutator);
+	INFO(__func__ << " " << (unsigned)mutator->thread_handle);
+
+	mutator->acbuf = (ACBuffer*)malloc(AC_BUFFER_SIZE_BYTES);
+	assert(mutator->acbuf);
+
+	mutator->acbuf->count = 0;
+	mutator->num_new_obj = 0;
+	mutator->num_dead_obj = 0;
+	mutator->num_access = 0;
+
+	g_num_mutator++;	/* FIXME: sync! */
+}
+
+
+
+
+void ac_mutator_end(Mutator *mutator)
+{
+	assert(mutator);
+	INFO(__func__ << " " << (unsigned)mutator->thread_handle);
+
+	/*------------------------------------*/
+	lock(g_lock);
+	g_num_new_obj  += mutator->num_new_obj;
+	g_num_dead_obj += mutator->num_dead_obj;
+	/* g_num_access   += mutator->num_access; */
+	/* g_num_move_obj += mutator->num_move_obj; */
+	unlock(g_lock);
+	/*------------------------------------*/
+
+	flush_buffer(mutator->acbuf);
+
+	free(mutator->acbuf);
+	mutator->acbuf = NULL;
+}
+
+
+
+
+void ac_collector_start(Collector *collector)
+{
+	INFO(__func__ << " " << (unsigned)collector->thread_handle);
+	assert(collector);
+
+	collector->acbuf = (ACBuffer*)malloc(AC_BUFFER_SIZE_BYTES);
+	assert(collector->acbuf);
+
+	collector->acbuf->count = 0;
+	collector->num_dead_obj = 0;
+	collector->num_move_obj = 0;
+	collector->num_access   = 0;
+	collector->num_new_obj  = 0;
+}
+
+
+
+
+void ac_collector_end(Collector *collector)
+{
+	INFO(__func__ << " " << (unsigned)collector->thread_handle);
+	assert(collector);
+
+	/*------------------------------------*/
+	lock(g_lock);
+	g_num_dead_obj += collector->num_dead_obj;
+	g_num_move_obj += collector->num_move_obj;
+	g_num_access   += collector->num_access;
+	unlock(g_lock);
+	/*------------------------------------*/
+
+	/* data should be written out on gc end */
+	assert(collector->acbuf->count == 0);
+
+	free(collector->acbuf);
+	collector->acbuf = NULL;
+}
+
+
+
+
+
+void ac_gc_start(GC *gc)
+{
+	TRACE(__func__);
+
+	assert(gc);
+	TRACE("AC: nos->heap_start = " << ((GC_Gen*)gc)->nos->heap_start);
+
+	/*
+	 * 1. Record accessed root objects.
+	 */
+	/* ac_pick_accessed_roots(); */
+	/* ac_clear_root_set(); */
+
+
+	/*
+	 * 2. Flush all mutators' buffers.
+	 */
+	for (Mutator *p = gc->mutator_list; p; p = p->next)
+		flush_buffer(p->acbuf);
+
+
+	/*
+	 * 3. Sanity check. Won't do in release mode.
+	 */
+#ifndef NDEBUG
+	for (unsigned i = 0; i != gc->num_collectors; i++)
+		assert(gc->collectors[i]->acbuf->count == 0);
+#endif
+
+
+	do_write(&g_gc_start, sizeof g_gc_start, 1);
+
+	g_gc_flag = true;
+}
+
+
+
+
+void ac_gc_end(GC *gc)
+{
+	TRACE(__func__);
+	assert(gc);
+
+	GC_Gen *gen = (GC_Gen*)gc;
+	TRACE("AC: nos->heap_start = " << gen->nos->heap_start);
+
+	Mutator *mutator = (Mutator*)gc_get_tls();
+	assert(mutator);
+
+	/*
+	 * Step1:  flush all collectors' dead and move buffers out.
+	 */
+
+        /* in minor gc, mutator who triggered gc will mark-sweep LOS */
+	flush_buffer(mutator->acbuf);
+
+        /* whether minor or major, collectors will move live objects */
+	for (unsigned i = 0; i != gc->num_collectors; i++)
+		flush_buffer(gc->collectors[i]->acbuf);
+
+
+	/*
+	 * Step2:  write gc end mark.
+	 */
+	do_write(&g_gc_end, sizeof g_gc_end, 1);
+	do_write(&gen->nos->heap_start, sizeof gen->nos->heap_start, 1);
+	do_write(&gen->nos->heap_end, sizeof gen->nos->heap_end, 1);
+
+
+
+
+	/*
+	 * Step3:  poison live obj-to-obj references.
+	 */
+	/* int64 poison_start_time = time_now(); */
+	/* ac_poison_live_refs(gc->metadata->gc_rootset_pool); */
+	/* ac_poison_live_refs(gc->metadata->weakroot_pool); */
+	/* int64 poison_end_time = time_now(); */
+
+	/* TRACE("AC: poison pause time is " << ((poison_end_time - poison_start_time)>>10) << " ms."); */
+	/* g_poison_total_time += poison_end_time - poison_start_time; */
+
+
+	g_gc_flag = false;
+}
+
+
+
+
+void ac_gc_wrapup(GC *gc)
+{
+	assert(gc);
+
+	int n = 0;
+
+	for (Mutator *p = gc->mutator_list; p; p = p->next, n++) {
+		flush_buffer(p->acbuf);
+		g_num_new_obj += p->num_new_obj;
+	}
+
+	g_gc_wrapup_flag = true;
+
+	INFO("AC: num mutators on " << __func__ << " is " << n);
+}
+
+
+
+
+void ac_app_start(GC *gc)
+{
+	INFO(__func__);
+
+	assert(gc);
+	GC_Gen *gen = (GC_Gen*)gc;
+	TRACE("AC: nos->heap_start = " << gen->nos->heap_start);
+
+	open_output_stream();
+	do_write(&g_app_start, sizeof g_app_start, 1);
+	do_write(&gen->nos->heap_start, sizeof gen->nos->heap_start, 1);
+	do_write(&gen->nos->heap_end, sizeof gen->nos->heap_end, 1);
+}
+
+
+
+
+void ac_app_end()
+{
+	INFO(__func__);
+
+
+	do_write(&g_app_end, sizeof g_app_end, 1); /* app end mark */
+
+	int size = sizeof g_num_new_obj
+		+ sizeof g_num_dead_obj
+		+ sizeof g_num_move_obj
+		+ sizeof g_num_access;
+	do_write(&size, sizeof size, 1); /* trailing info block size */
+
+	do_write(&g_num_new_obj, sizeof g_num_new_obj, 1);
+	do_write(&g_num_dead_obj, sizeof g_num_dead_obj, 1);
+	do_write(&g_num_move_obj, sizeof g_num_move_obj, 1);
+	do_write(&g_num_access, sizeof g_num_access, 1);
+
+	close_output_stream();
+
+
+	/* INFO("AC: total poison time is " << (g_poison_total_time>>10) << " ms."); */
+	INFO("AC: total new object is " << g_num_new_obj);
+	INFO("AC: total expilicitly dead object is " << g_num_dead_obj);
+	INFO("AC: total move object is " << g_num_move_obj);
+	INFO("AC: total access is " << g_num_access);
+	INFO("AC: total mutator is " << g_num_mutator);
+}
+
+
+
+
+static void open_output_stream()
+{
+	if ((g_fp = fopen(g_path, "wb")) == NULL)
+		DIE(("ac tracker can't open output file."));
+
+	if ((g_method_file = fopen(g_method_file_path, "w")) == NULL)
+		DIE(("ac tracker can't open method info output file."));
+}
+
+
+
+
+static void close_output_stream()
+{
+	if (g_fp) {
+		fclose(g_fp);
+		g_fp = NULL;
+	}
+
+	if (g_method_file) {
+		/* flush type information into file */
+		for (vector<TypeRecord*>::const_iterator i = g_types.begin(); i != g_types.end(); ++i) {
+			fprintf(g_method_file, "%p %8u %s\n", (*i)->_vtable, (*i)->_size, (*i)->_name.c_str());
+			delete *i;
+		}
+		fprintf(g_method_file, "0x0 %8u %s\n", 0, "end_of_vtable_info"); /* end mark of vtable info */
+		g_types.clear();
+
+
+		/* flush method information into file */
+		for (vector<MethodRecord*>::const_iterator i = g_methods.begin(); i != g_methods.end(); ++i) {
+			fprintf(g_method_file, "%8X %8X %s\n", (*i)->_code_start, (*i)->_code_end, (*i)->_name.c_str());
+			delete *i;
+		}
+		g_methods.clear();
+
+		fclose(g_method_file);
+		g_method_file = NULL;
+	}
+}

@@ -1290,6 +1290,10 @@ Thread::Thread(bool daemon) : tls32_(daemon), wait_monitor_(nullptr), interrupte
   }
   tlsPtr_.flip_function = nullptr;
   tls32_.suspended_at_suspend_check = false;
+  // >> *waanan*
+  tlsPtr_.alloc_site = 0xFFFFFFFF;
+  tlsPtr_.array_alloc_size = 0;
+  // <<
 }
 
 bool Thread::IsStillStarting() const {

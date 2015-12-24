@@ -138,6 +138,12 @@ static constexpr size_t kNumRosAllocThreadLocalSizeBrackets = 34;
 
 class Thread {
  public:
+  // >> *waanan*
+  ALWAYS_INLINE uint32_t GetAllocSite() { return tlsPtr_.alloc_site; }
+  ALWAYS_INLINE size_t GetArrayAllocSize() { return tlsPtr_.array_alloc_size; }
+  ALWAYS_INLINE void SetArrayAllocSize(size_t size) { tlsPtr_.array_alloc_size = size; }
+  // <<
+
   // For implicit overflow checks we reserve an extra piece of memory at the bottom
   // of the stack (lowest memory).  The higher portion of the memory
   // is protected against reads and the lower is available for use while
@@ -586,6 +592,13 @@ class Thread {
   static ThreadOffset<pointer_size> ExceptionOffset() {
     return ThreadOffsetFromTlsPtr<pointer_size>(OFFSETOF_MEMBER(tls_ptr_sized_values, exception));
   }
+
+  // >> *waanan*
+  template<size_t pointer_size>
+    static ThreadOffset<pointer_size> AllocSiteOffset() {
+    return ThreadOffsetFromTlsPtr<pointer_size>(OFFSETOF_MEMBER(tls_ptr_sized_values, alloc_site));
+  }
+  // <<
 
   template<size_t pointer_size>
   static ThreadOffset<pointer_size> PeerOffset() {
@@ -1268,6 +1281,18 @@ class Thread {
 
     // Current method verifier, used for root marking.
     verifier::MethodVerifier* method_verifier;
+
+    // >> *waanan*
+    // return address of the last java method, set by assembly stub before
+    // call quick allocation routines.
+    // see arch/arm/quick_entrypoints_arm.S about
+    // TWO_ARG_DOWNCALL and THREE_ARG_DOWNCALL macros.
+    uint32_t alloc_site;
+
+    // current allocating array object size, only nonzero for array objects.
+    size_t array_alloc_size;
+    // <<
+
   } tlsPtr_;
 
   // Guards the 'interrupted_' and 'wait_monitor_' members.

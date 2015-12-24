@@ -130,6 +130,9 @@
 #include "verifier/method_verifier.h"
 #include "well_known_classes.h"
 
+// leaktracer head file *waanan*
+#include "leaktracer/leaktracer.h"
+
 namespace art {
 
 // If a signal isn't handled properly, enable a handler that attempts to dump the Java stack.
@@ -247,6 +250,18 @@ Runtime::~Runtime() {
   // Make sure to let the GC complete if it is running.
   heap_->WaitForGcToComplete(gc::kGcCauseBackground, self);
   heap_->DeleteThreadPool();
+
+  // *waanan*
+  // Destroy leaktracer before class_linker and thread_list, because
+  // leaktracer needs access to those two classes.
+  if (leaktracer::gLeakTracerIsTracking) {
+    auto *instance = leaktracer::LeakTracer::Instance();
+    instance->AppFinished();
+    delete instance;
+  }
+  // <<
+
+
   if (jit_.get() != nullptr) {
     VLOG(jit) << "Deleting jit thread pool";
     // Delete thread pool before the thread list since we don't want to wait forever on the
@@ -848,6 +863,11 @@ bool Runtime::Init(const RuntimeOptions& raw_options, bool ignore_unrecognized) 
 
   XGcOption xgc_option = runtime_options.GetOrDefault(Opt::GcOption);
   ATRACE_BEGIN("CreateHeap");
+
+  // LeakTracer Start *waanan*
+  if (leaktracer::LeakTracer::Create(nullptr))
+    LOG(WARNING) << "LeakTracer start failed.";
+
   heap_ = new gc::Heap(runtime_options.GetOrDefault(Opt::MemoryInitialSize),
                        runtime_options.GetOrDefault(Opt::HeapGrowthLimit),
                        runtime_options.GetOrDefault(Opt::HeapMinFree),

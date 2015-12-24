@@ -1,0 +1,252 @@
+/*
+ * ac_interface.h - Tracker's interface for vm and gc.
+ *
+ * This interface is designed for use by vm and gc to record
+ * various kinds of events relating to objects, such as creation,
+ * access, move and deadth.
+ *
+ * It doesn't matter how tracker will handle those requests,
+ * it can send data through network or write to local disk, or just
+ * ignore requests.
+ *
+ * All interface function names start with ac_, which stands for
+ * 'address chain'. Address chain is the method we use to construct
+ * objects' life time information.
+ *
+ *
+ * History:
+ *
+ * Created on 2015-1-3 by Hengyang Yu.
+ *   Initial craft.
+ *
+ * Modified on 2015-1-14 by Hengyang Yu.
+ *   Add argument gc to ac_gc_end().
+ */
+#ifndef TRACKER_INTERFACE_INCLUDED
+#define TRACKER_INTERFACE_INCLUDED
+
+#include "../common/gc_common.h"
+#include "../utils/sync_pool.h"
+
+/*
+ * code_start - start address of compiled java method code.
+ * code_size  - size in bytes of compiled java method code.
+ * class_name - class name.
+ * method_name- name of java method
+ *
+ * Get called when a java method compilation is finished.
+ */
+extern void ac_method_compiled(void *code_start, unsigned code_size,
+				 const char *class_name, const char *method_name);
+
+
+
+
+/*
+ * vtable - virtual table address of class.
+ * instance_size - size in bytes of class instance.
+ * clss_name - name of the class to which vtable belongs.
+ *
+ * Records the mapping between vtable address and its class name.
+ */
+extern void ac_new_vtable(void *vtable, unsigned instance_size, const char *clss_name);
+
+
+
+
+/*
+ * alloc_site - allocation site of new object.
+ * addr - address of object.
+ *
+ * Record object born event.
+ */
+extern void ac_new_object(unsigned alloc_site, unsigned addr);
+
+/*
+ * For array object, we can't simply get its size by the type of it, we also
+ * have consider its length. While the length of an array varies, so we directly record
+ * the total size of an array object here.
+ */
+extern void ac_new_array_object(unsigned alloc_site, unsigned addr, unsigned size);
+
+
+/*
+ * addr - object address.
+ *
+ * Record object access event, i.e., read/write.
+ */
+extern void ac_access_object(unsigned addr);
+
+/*
+ * old_addr - object's original address.
+ * new_addr - object's new address.
+ *
+ * Record the event that an object was moved from old_addr to
+ * new_addr.
+ */
+extern void ac_move_object(unsigned old_addr, unsigned new_addr);
+
+
+/*
+ * addr - address of the dead object.
+ *
+ * Record object deadth event, i.e., explicitly reclaimed by GC.
+ */
+extern void ac_dead_object(unsigned addr);
+
+
+/*
+ * This function is called only once after GC heap has been initialized upon
+ * application startup.
+ */
+extern void ac_app_start(GC* gc);
+
+
+/*
+ * This function is called only once when the virtual machine is going to
+ * be destroyed.
+ *
+ * Precondition: gc_wrapup() has been called, i.e., gc heap has been destroyed.
+ */
+extern void ac_app_end();
+
+
+/*
+ * Precondition: all mutators have been suspended.
+ */
+extern void ac_gc_start(GC *gc);
+
+
+/*
+ * Called after gc.
+ *
+ * Precondition: all mutators have been suspended.
+ */
+extern void ac_gc_end(GC *gc);
+
+extern void ac_gc_wrapup(GC *gc);
+
+
+
+struct Mutator;	/* forward declaration, see gc_gen/thread/mutator.h */
+
+/*
+ * mutator - Pointer to the newly created GC's per-mutator structure.
+ *
+ * GC call this function when it initializes a new mutator structure.
+ */
+extern void ac_mutator_start(Mutator *mutator);
+
+
+/*
+ * mutator - mutator to be destroyed.
+ *
+ * GC call this function when it destructs a mutator structure.
+ */
+extern void ac_mutator_end(Mutator *mutator);
+
+
+struct Collector; /* forward declaration, see gc_gen/thread/collector.h */
+
+/*
+ * collector - Pointer to the newly created garbage collector thread.
+ *
+ * Caled when GC is initializing collectors.
+ */
+extern void ac_collector_start(Collector *collector);
+
+
+/*
+ * collector - collector to be destroyed.
+ *
+ * Called when GC is destructing collectors.
+ */
+extern void ac_collector_end(Collector *collector);
+
+/*
+ * Flush collector's acbuf.
+ */
+extern void ac_flush_collectors_buf(GC *gc);
+
+
+////////////////////////////////////////////////////////////////
+/* /\* */
+/*  * root_set - locations contain root references, */
+/*  *            a pool is a set of vector blocks. */
+/*  * */
+/*  * Poison live refs by marking the lowest bit */
+/*  * of each object-to-object reference. */
+/*  *\/ */
+/* extern void ac_poison_live_refs(Pool *root_set); */
+
+
+/* /\* */
+/*  * obj - a root object. */
+/*  *\/ */
+/* extern void ac_add_root(Partial_Reveal_Object *obj); */
+/* extern void ac_clear_root_set(void); */
+/* extern bool ac_is_root(Partial_Reveal_Object *obj);	/\* returns true if obj is an root object *\/ */
+/* extern void ac_remove_root(Partial_Reveal_Object *obj); */
+/* extern void ac_pick_accessed_roots(void); */
+
+
+/* #define AC_POISON_BIT 0x1 */
+
+
+/* FORCE_INLINE bool ac_is_poisoned(Partial_Reveal_Object *referent) */
+/* { */
+/* 	return ((POINTER_SIZE_INT)referent & AC_POISON_BIT) != 0; */
+/* } */
+
+
+/* FORCE_INLINE Partial_Reveal_Object* ac_poison_ref(Partial_Reveal_Object *referent) */
+/* { */
+/* 	return (Partial_Reveal_Object*)((POINTER_SIZE_INT)referent | AC_POISON_BIT); */
+/* } */
+
+
+/* FORCE_INLINE Partial_Reveal_Object* ac_unpoison_ref(Partial_Reveal_Object *referent) */
+/* { */
+/* 	return (Partial_Reveal_Object*)((POINTER_SIZE_INT)referent & ~AC_POISON_BIT); */
+/* } */
+////////////////////////////////////////////////////////////////
+
+
+/*
+ * For the purpos of using free bit to indicate accessed objects, we
+ * can 'steal' unused bits in obj_info.
+ *
+ * But it remains to see whether the following bits are really available for
+ * us to use. Anyway, I find no where that gc used these bits.
+ *
+ * OBJ_DIRTY_BIT is for concurrent gc
+ * OBJ_REM_BIT is for generational gc
+ *
+ * both are not implemnted yet in current GCv6.
+ */
+//#define ACCESSED_BIT (0x1<<2)
+//#define ACCESSED_BIT (0x1<<3)
+//#define ACCESSED_BIT (0x1<<4)
+//#define ACCESSED_BIT OBJ_REM_BIT
+#define ACCESSED_BIT OBJ_DIRTY_BIT
+
+FORCE_INLINE Boolean ac_obj_is_accessed(Partial_Reveal_Object *obj)
+{
+	return obj_is_dirty_in_oi(obj);
+}
+
+FORCE_INLINE void ac_set_access_bit(Partial_Reveal_Object *obj)
+{
+	Obj_Info_Type oi = get_obj_info_raw(obj);
+	oi |= ACCESSED_BIT;
+	set_obj_info(obj, oi);
+}
+
+FORCE_INLINE void ac_unaccess_obj(Partial_Reveal_Object *obj)
+{
+	Obj_Info_Type oi = get_obj_info_raw(obj);
+	oi &= ~ACCESSED_BIT;
+	set_obj_info(obj, oi);
+}
+
+#endif	/* TRACKER_INTERFACE_INCLUDED */

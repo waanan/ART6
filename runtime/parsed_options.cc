@@ -29,6 +29,11 @@
 #include "cmdline_parser.h"
 #include "runtime_options.h"
 
+// *waanan*
+#define LOG_TAG "LeakTracer"
+#include <utils/Log.h>
+// <<
+
 namespace art {
 
 using MemoryKiB = Memory<1024>;

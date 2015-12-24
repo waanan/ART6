@@ -211,6 +211,10 @@ LIBART_COMMON_SRC_FILES += \
   entrypoints/quick/quick_throw_entrypoints.cc \
   entrypoints/quick/quick_trampoline_entrypoints.cc
 
+
+# add LeakTracer file *waanan*
+LIBART_COMMON_SRC_FILES += leaktracer/leaktracer.cc
+
 LIBART_TARGET_LDFLAGS :=
 LIBART_HOST_LDFLAGS :=
 
@@ -510,6 +514,8 @@ endef
 
 # We always build dex2oat and dependencies, even if the host build is otherwise disabled, since
 # they are used to cross compile for the target.
+
+# disable host compile *waanan*
 ifeq ($(ART_BUILD_HOST_NDEBUG),true)
   $(eval $(call build-libart,host,ndebug))
 endif
