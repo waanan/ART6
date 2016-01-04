@@ -57,6 +57,10 @@
 #include "utf.h"
 #include "well_known_classes.h"
 
+// *waanan*
+#include "leaktracer/leaktracer.h"
+// <<
+
 namespace art {
 
 // Consider turning this on when there is errors which could be related to JNI array copies such as
@@ -2481,7 +2485,23 @@ class JNI {
       }
     }
   }
+
+  // *waanan*
+ public:
+  static void LeakTracerStartTracking(const char *proc_name) {
+  // LeakTracer Start *waanan*
+    int errcode = -1;
+    if ((errcode = leaktracer::LeakTracer::Create(proc_name))) {
+      if(errcode ==42) {
+        LOG(WARNING) << "LeakTracer Don't choose to track This APP!";      
+      } else {
+        LOG(WARNING) << "LeakTracer start failed, errcode is " << errcode;    
+      }
+    } 
+  }
+  // <<
 };
+
 
 const JNINativeInterface gJniNativeInterface = {
   nullptr,  // reserved0.
@@ -2717,6 +2737,9 @@ const JNINativeInterface gJniNativeInterface = {
   JNI::GetDirectBufferAddress,
   JNI::GetDirectBufferCapacity,
   JNI::GetObjectRefType,
+  // *waanan*
+  JNI::LeakTracerStartTracking,
+  // <<
 };
 
 const JNINativeInterface* GetJniNativeInterface() {

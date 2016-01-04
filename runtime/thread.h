@@ -142,6 +142,9 @@ class Thread {
   ALWAYS_INLINE uint32_t GetAllocSite() { return tlsPtr_.alloc_site; }
   ALWAYS_INLINE size_t GetArrayAllocSize() { return tlsPtr_.array_alloc_size; }
   ALWAYS_INLINE void SetArrayAllocSize(size_t size) { tlsPtr_.array_alloc_size = size; }
+  ALWAYS_INLINE bool GetIsLargeObj() { return tlsPtr_.is_large_obj; }
+  ALWAYS_INLINE void SetIsLargeObj(bool b) { tlsPtr_.is_large_obj = b; }
+  size_t GetNeededTlsPtrStructSize() { return sizeof(tls_ptr_sized_values); }
   // <<
 
   // For implicit overflow checks we reserve an extra piece of memory at the bottom
@@ -1283,6 +1286,7 @@ class Thread {
     verifier::MethodVerifier* method_verifier;
 
     // >> *waanan*
+    // The Size Of Tls32: 988, the offset of alloc_site is 1108
     // return address of the last java method, set by assembly stub before
     // call quick allocation routines.
     // see arch/arm/quick_entrypoints_arm.S about
@@ -1291,6 +1295,7 @@ class Thread {
 
     // current allocating array object size, only nonzero for array objects.
     size_t array_alloc_size;
+    bool is_large_obj;
     // <<
 
   } tlsPtr_;

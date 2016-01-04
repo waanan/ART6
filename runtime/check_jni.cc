@@ -3375,6 +3375,16 @@ class CheckJNI {
       sc.Check(soa, false, "V", &result);
     }
   }
+
+public:
+  // *waanan*
+  // define this function to avoid compile error
+  static void LeakTracerStartTracking(const char *proc_name) {
+    if(proc_name == nullptr){
+    }
+  }
+  // <<
+
 };
 
 const JNINativeInterface gCheckNativeInterface = {
@@ -3611,6 +3621,9 @@ const JNINativeInterface gCheckNativeInterface = {
   CheckJNI::GetDirectBufferAddress,
   CheckJNI::GetDirectBufferCapacity,
   CheckJNI::GetObjectRefType,
+  // *waanan
+  CheckJNI::LeakTracerStartTracking,
+  //
 };
 
 const JNINativeInterface* GetCheckJniNativeInterface() {

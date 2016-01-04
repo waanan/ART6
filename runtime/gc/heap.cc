@@ -2352,6 +2352,9 @@ collector::GarbageCollector* Heap::Compact(space::ContinuousMemMapAllocSpace* ta
                                            GcCause gc_cause) {
   CHECK(kMovingCollector);
   if (target_space != source_space) {
+    // *waanan*
+    LOG(INFO) << "Semispace compact";
+    // <<
     // Don't swap spaces since this isn't a typical semi space collection.
     semi_space_collector_->SetSwapSemiSpaces(false);
     semi_space_collector_->SetFromSpace(source_space);
@@ -2359,6 +2362,9 @@ collector::GarbageCollector* Heap::Compact(space::ContinuousMemMapAllocSpace* ta
     semi_space_collector_->Run(gc_cause, false);
     return semi_space_collector_;
   } else {
+    // *waanan*
+    LOG(INFO) << "Mark compact";
+    // <<
     CHECK(target_space->IsBumpPointerSpace())
         << "In-place compaction is only supported for bump pointer spaces";
     mark_compact_collector_->SetSpace(target_space->AsBumpPointerSpace());
@@ -2494,7 +2500,10 @@ void Heap::LogGC(GcCause gc_cause, collector::GarbageCollector* collector) {
       log_gc = log_gc || pause >= long_pause_log_threshold_;
     }
   }
-  if (log_gc) {
+  // *waanan*
+  // if (log_gc) 
+  // <<
+  {
     const size_t percent_free = GetPercentFree();
     const size_t current_heap_size = GetBytesAllocated();
     const size_t total_memory = GetTotalMemory();

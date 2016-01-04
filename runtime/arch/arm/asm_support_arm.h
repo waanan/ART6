@@ -23,6 +23,11 @@
 #define FRAME_SIZE_REFS_ONLY_CALLEE_SAVE 32
 #define FRAME_SIZE_REFS_AND_ARGS_CALLEE_SAVE 112
 
+// *waanan*
+// Offset of field Thread::tlsPtr_.alloc_site
+#define THREAD_ALLOC_SITE_OFFSET 1108
+// <<
+
 // Flag for enabling R4 optimization in arm runtime
 // #define ARM_R4_SUSPEND_FLAG
 

@@ -33,6 +33,10 @@
 #include "thread_list.h"
 #include "utils.h"
 
+// *waanan*
+#include "../../leaktracer/leaktracer.h"
+// <<
+
 namespace art {
 namespace gc {
 namespace collector {
@@ -86,7 +90,22 @@ void GarbageCollector::Run(GcCause gc_cause, bool clear_soft_references) {
   uint64_t start_time = NanoTime();
   Iteration* current_iteration = GetCurrentIteration();
   current_iteration->Reset(gc_cause, clear_soft_references);
+
+  // *waanan*
+  if (leaktracer::gLeakTracerIsTracking) {
+    CollectorType type = GetCollectorType();
+    bool is_compacting_gc = (type != kCollectorTypeMS) && (type != kCollectorTypeCMS);
+    leaktracer::LeakTracer::Instance()->GcStarted(is_compacting_gc);
+  }
+  // <<
+
   RunPhases();  // Run all the GC phases.
+
+  // *waanan*
+  if (leaktracer::gLeakTracerIsTracking)
+    leaktracer::LeakTracer::Instance()->GcFinished();
+  // <<
+
   // Add the current timings to the cumulative timings.
   cumulative_timings_.AddLogger(*GetTimings());
   // Update cumulative statistics with how many bytes the GC iteration freed.

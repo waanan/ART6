@@ -74,6 +74,10 @@
 #include "vmap_table.h"
 #include "well_known_classes.h"
 
+// *waanan*
+// #include <utils/Log.h>
+// <<
+
 namespace art {
 
 bool Thread::is_started_ = false;
@@ -505,6 +509,12 @@ bool Thread::Init(ThreadList* thread_list, JavaVMExt* java_vm, JNIEnvExt* jni_en
       return false;
     }
   }
+
+  // *waanan*
+  // In orderto get the size of tls32
+  // ALOGD("The Size Of Tls32: %d\n", (int)GetNeededTlsPtrStructSize());
+  // ALOGD("The offset Of Alloc_site: %d\n", AllocSiteOffset<4>().Int32Value());
+  // <<
 
   thread_list->Register(this);
   return true;

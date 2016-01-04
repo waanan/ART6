@@ -30,6 +30,7 @@
 #include "mirror/object_array-inl.h"
 #include "mirror/class-inl.h"
 #include "thread.h"
+#include <signal.h>
 
 #include "leaktracer.h"
 #include "ac_defs.h"
@@ -52,6 +53,19 @@ namespace art {
     bool gLogOnly = false;           // if true, do not write to file.
 
     std::set<std::string> gBenchmarks;
+    std::set<std::string> noTrackSet;
+
+    // static void
+    // exitSigHandler(int sig)
+    // {
+    //   // Log quit information.
+    //   ALOGD("Get quit sig from ActivityManager, SIG :  %d \n", sig);
+    //   gLeakTracerIsTracking = false;
+    //   auto *instance = leaktracer::LeakTracer::Instance();
+    //   instance->AppFinished();
+    //   delete instance;
+    //   kill(getpid(),SIGKILL);
+    // }
 
     static void InitBenchmarkSet() {
       // for benchmarks started by the ActivityManager
@@ -61,10 +75,16 @@ namespace art {
       gBenchmarks.insert("com.LinpackJava");
       gBenchmarks.insert("com.LinpackSP");
       gBenchmarks.insert("com.linpackv7");
-      gBenchmarks.insert("org.zeroxlab.zeroxbenchmark");
+      gBenchmarks.insert("com.buaa.waanan.ltconfig");
+      gBenchmarks.insert("com.android.calculator2");
 
       // for benchmarks started manually from the adb shell
       gBenchmarks.insert("dalvikvm");
+    }
+
+    static void InitNoTrackSet() {
+      // don't track some system process, cause track them cause system error
+      noTrackSet.insert("/system/bin/dex2oat");
     }
 
     static bool GetProcNameByPid(char *buf, size_t size, int pid) {
@@ -137,9 +157,18 @@ namespace art {
           track = true;
         }
       }
+
+      // Log which procedure is being tracked.
+      ALOGD("Meeting :  %s\n", name);
+
       if (!track) {
         InitBenchmarkSet();
         track = gBenchmarks.end() != gBenchmarks.find(name);
+      }
+
+      if (track) {
+        InitNoTrackSet();
+        track = noTrackSet.end() == noTrackSet.find(name);
       }
 
       int errcode = -1;
@@ -154,8 +183,16 @@ namespace art {
         if (errcode)
           gLogOnly = true;
 
+        // if(false == gLogOnly) {
+        //   if (signal(SIGUSR2, exitSigHandler) != SIG_ERR)
+        //     // Log quit information.
+        //     ALOGD("Register Quit sig hander!\n");
+        // }
+
         gLeakTracerIsTracking = true;
         Instance()->AppStarted();
+      }else {
+	return 42; // 42 represent that we don't Track this APP
       }
 
       if (NULL == proc_name)
@@ -169,7 +206,9 @@ namespace art {
       if (gLeakTracerIsTracking && !gLogOnly) {
         uint32_t klass = *reinterpret_cast<uint32_t*>(addr);
         Thread *self = Thread::Current();
-        size_t array_size = self->GetArrayAllocSize();
+        // size_t array_size = self->GetArrayAllocSize();
+        bool is_large_object = self->GetIsLargeObj();
+        self->SetIsLargeObj(false);
         ObjectKind obj_kind = kNormalObject;
         //
         // the order is:
@@ -178,12 +217,18 @@ namespace art {
         // the least two bits of klass indicates what kind of object is, and
         // if large or array object, their size will follow klass immediately.
         //
-        if (array_size) {
-          DCHECK_EQ(size, array_size);
-          self->SetArrayAllocSize(0U);
-          obj_kind = kArrayObject;
-        } else if (size > gc::Heap::kDefaultLargeObjectThreshold) {
+        // if (array_size) {
+        //   DCHECK_EQ(size, array_size);
+        //   self->SetArrayAllocSize(0U);
+        //   obj_kind = kArrayObject;
+        //   ALOGD("Meeting Array Object: %p  Size: %d\n", addr, (int)size);
+        // } else if (size > gc::Heap::kDefaultLargeObjectThreshold) {
+        //   obj_kind = kLargeObject;
+        //   ALOGD("Meeting String Large Object: %p   Size:%d\n", addr, (int)size);
+        // }
+        if(is_large_object) {
           obj_kind = kLargeObject;
+          ALOGD("Meeting Large Object: %p   Size:%d\n", addr, (int)size);
         }
 
         u32 data[4], count = 0;
@@ -345,6 +390,7 @@ namespace art {
         } else {
           uint32_t raw = kGcEnd;
           WriteSafe(&raw, sizeof raw);
+          DumpTypeAndMethodInfo();
         }
       }
     }
@@ -429,27 +475,23 @@ namespace art {
 
 
     void LeakTracer::DumpTypeAndMethodInfo() {
+      auto& table = Runtime::Current()->GetClassLinker()->GetClassTable();
+      for (auto& it : table) {
         ReaderMutexLock mu(Thread::Current(), *Locks::mutator_lock_);
-        auto* table = Runtime::Current()->GetClassLinker()->GetClassRoots();
-        for (auto i = 0; i< table->GetLength(); i++) {
-          NewClass(table->Get(i));
-        }
-        // for (auto& it : table) {
-        //   ReaderMutexLock mu(Thread::Current(), *Locks::mutator_lock_);
-        //   mirror::Class *klass = it.second.Read<kWithoutReadBarrier>();
+         mirror::Class *klass = it.Read<kWithoutReadBarrier>();
 
-        //   // thought we have found a new class!
-        //   NewClass(klass);
+        // thought we have found a new class!
+        NewClass(klass);
 
-        //   // std::vector<mirror::ObjectArray<mirror::ArtMethod>*> methods;
-        //   // methods.push_back(klass->GetDirectMethods());
-        //   // methods.push_back(klass->GetVirtualMethods());
-        //   // methods.push_back(klass->GetImTable());
-        //   // for (const auto method_array : methods)
-        //   //   if (method_array)
-        //   //     for (int i = 0; i < method_array->GetLength(); ++i)
-        //   //       NewMethodLinked(method_array->Get(i));
-        // }
+        // std::vector<mirror::ObjectArray<mirror::ArtMethod>*> methods;
+        // methods.push_back(klass->GetDirectMethods());
+        // methods.push_back(klass->GetVirtualMethods());
+        // methods.push_back(klass->GetImTable());
+        // for (const auto method_array : methods)
+        //   if (method_array)
+        //     for (int i = 0; i < method_array->GetLength(); ++i)
+        //       NewMethodLinked(method_array->Get(i));
+      }
     }
 
 

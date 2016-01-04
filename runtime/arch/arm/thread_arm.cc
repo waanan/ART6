@@ -26,6 +26,9 @@ void Thread::InitCpu() {
   CHECK_EQ(THREAD_CARD_TABLE_OFFSET, CardTableOffset<4>().Int32Value());
   CHECK_EQ(THREAD_EXCEPTION_OFFSET, ExceptionOffset<4>().Int32Value());
   CHECK_EQ(THREAD_ID_OFFSET, ThinLockIdOffset<4>().Int32Value());
+  // *waanan*
+  CHECK_EQ(THREAD_ALLOC_SITE_OFFSET, AllocSiteOffset<4>().Int32Value());
+  // <<
 }
 
 void Thread::CleanupCpu() {

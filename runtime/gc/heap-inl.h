@@ -34,6 +34,11 @@
 #include "utils.h"
 #include "verify_object-inl.h"
 
+// *waanan* for debug
+//#define LOG_TAG "LeakTracer"
+//#include <utils/Log.h>
+// <<
+
 namespace art {
 namespace gc {
 
@@ -52,6 +57,10 @@ inline mirror::Object* Heap::AllocObjectWithAllocator(Thread* self, mirror::Clas
   // path this function. If we didn't check we would have an infinite loop.
   mirror::Object* obj;
   if (kCheckLargeObject && UNLIKELY(ShouldAllocLargeObject(klass, byte_count))) {
+    // *waanan*
+    self->SetIsLargeObj(true);
+    // ALOGD("Meeting Large Object!\n");
+    // <<
     obj = AllocLargeObject<kInstrumented, PreFenceVisitor>(self, &klass, byte_count,
                                                            pre_fence_visitor);
     if (obj != nullptr) {
@@ -190,6 +199,12 @@ inline mirror::Object* Heap::AllocObjectWithAllocator(Thread* self, mirror::Clas
   }
   VerifyObject(obj);
   self->VerifyStack();
+
+  // *waanan*
+  // all alloc action merge here
+  if (leaktracer::gLeakTracerIsTracking)
+    leaktracer::LeakTracer::Instance()->NewObject(obj, byte_count);
+  // <<
   return obj;
 }
 

@@ -47,6 +47,11 @@
 #include "thread-inl.h"
 #include "thread_list.h"
 
+// *waanan*
+#include "leaktracer/leaktracer-inl.h"
+#include "leaktracer/leaktracer.h"
+// <<
+
 using ::art::mirror::Object;
 
 namespace art {
@@ -1167,6 +1172,11 @@ void MarkSweep::SweepArray(accounting::ObjectStack* allocations, bool swap_bitma
             chunk_free_pos = 0;
           }
           chunk_free_buffer[chunk_free_pos++] = obj;
+
+          // *waanan*
+          if (leaktracer::gLeakTracerIsTracking)
+            leaktracer::LeakTracer::Instance()->DeadObject(obj);
+          // <<
         }
       } else {
         (out++)->Assign(obj);
@@ -1199,6 +1209,10 @@ void MarkSweep::SweepArray(accounting::ObjectStack* allocations, bool swap_bitma
       if (!large_mark_objects->Test(obj)) {
         ++freed_los.objects;
         freed_los.bytes += large_object_space->Free(self, obj);
+      // *waanan*
+      if (leaktracer::gLeakTracerIsTracking)
+        leaktracer::LeakTracer::Instance()->DeadObject(obj);
+      // <<
       }
     }
   }

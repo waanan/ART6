@@ -736,6 +736,14 @@ class ClassLinker {
   // This contains strong roots. To enable concurrent root scanning of
   // the class table, be careful to use a read barrier when accessing this.
   Table class_table_ GUARDED_BY(Locks::classlinker_classes_lock_);
+
+  // *waanan*
+ public:
+  Table& GetClassTable() { return class_table_; }
+
+ private:
+  // <<
+
   Table pre_zygote_class_table_ GUARDED_BY(Locks::classlinker_classes_lock_);
   std::vector<GcRoot<mirror::Class>> new_class_roots_;
 

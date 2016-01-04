@@ -44,6 +44,17 @@
 #include "thread_pool.h"
 #include "verify_object.h"
 
+// *waanan*
+#include "leaktracer/leaktracer.h"
+// <<
+
+
+// *waanan*
+namespace leaktracer {
+  class LeakTracer;
+}  // namespace leaktracer
+// <<
+
 namespace art {
 
 class ConditionVariable;

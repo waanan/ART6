@@ -29,6 +29,10 @@
 #include "thread_list.h"
 #include "utils.h"
 
+// *waanan*
+#include "../../leaktracer/leaktracer.h"
+// <<
+
 namespace art {
 namespace gc {
 namespace space {
@@ -241,6 +245,15 @@ void MallocSpace::SweepCallback(size_t num_ptrs, mirror::Object** ptrs, void* ar
       bitmap->Clear(ptrs[i]);
     }
   }
+
+  // *waanan*
+  // collect dead objects
+  if (leaktracer::gLeakTracerIsTracking) {
+    for (size_t i = 0; i < num_ptrs; ++i)
+      leaktracer::LeakTracer::Instance()->DeadObject(ptrs[i]);
+  }
+  // <<
+
   // Use a bulk free, that merges consecutive objects before freeing or free per object?
   // Documentation suggests better free performance with merging, but this may be at the expensive
   // of allocation.

@@ -48,6 +48,10 @@
 #include "thread-inl.h"
 #include "thread_list.h"
 
+// *waanan*
+#include "../../leaktracer/leaktracer.h"
+// <<
+
 using ::art::mirror::Object;
 
 namespace art {
@@ -439,6 +443,11 @@ inline void SemiSpace::MarkStackPush(Object* obj) {
 }
 
 static inline size_t CopyAvoidingDirtyingPages(void* dest, const void* src, size_t size) {
+  // *waanan*
+  if (leaktracer::gLeakTracerIsTracking) {
+    leaktracer::LeakTracer::Instance()->MoveObject(const_cast<void*>(src), dest);
+  }
+  // <<
   if (LIKELY(size <= static_cast<size_t>(kPageSize))) {
     // We will dirty the current page and somewhere in the middle of the next page. This means
     // that the next object copied will also dirty that page.

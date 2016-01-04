@@ -28,6 +28,10 @@
 #include "space-inl.h"
 #include "thread-inl.h"
 
+// *waanan*
+#include "../../leaktracer/leaktracer.h"
+// <<
+
 namespace art {
 namespace gc {
 namespace space {
@@ -586,6 +590,15 @@ void LargeObjectSpace::SweepCallback(size_t num_ptrs, mirror::Object** ptrs, voi
       bitmap->Clear(ptrs[i]);
     }
   }
+
+  // *waanan*
+  // collect dead large object
+  if (leaktracer::gLeakTracerIsTracking) {
+    for (size_t i = 0; i < num_ptrs; ++i)
+      leaktracer::LeakTracer::Instance()->DeadObject(ptrs[i]);
+  }
+  // <<
+
   context->freed.objects += num_ptrs;
   context->freed.bytes += space->FreeList(self, num_ptrs, ptrs);
 }

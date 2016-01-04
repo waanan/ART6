@@ -132,6 +132,7 @@
 
 // leaktracer head file *waanan*
 #include "leaktracer/leaktracer.h"
+// <<
 
 namespace art {
 
@@ -865,8 +866,14 @@ bool Runtime::Init(const RuntimeOptions& raw_options, bool ignore_unrecognized) 
   ATRACE_BEGIN("CreateHeap");
 
   // LeakTracer Start *waanan*
-  if (leaktracer::LeakTracer::Create(nullptr))
-    LOG(WARNING) << "LeakTracer start failed.";
+  int errcode = -1;
+  if ((errcode = leaktracer::LeakTracer::Create(nullptr))) {
+    if(errcode ==42) {
+      LOG(WARNING) << "LeakTracer Don't choose to track This APP!";      
+    } else {
+      LOG(WARNING) << "LeakTracer start failed, errcode is " << errcode;    
+    }
+  }
 
   heap_ = new gc::Heap(runtime_options.GetOrDefault(Opt::MemoryInitialSize),
                        runtime_options.GetOrDefault(Opt::HeapGrowthLimit),

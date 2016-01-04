@@ -58,10 +58,6 @@ class ParsedOptions {
   void (*hook_exit_)(jint status);
   void (*hook_abort_)();
 
-  // *waanan*
-  bool leaktracer_is_enabled_;
-  // <<
-
  private:
   ParsedOptions();
 

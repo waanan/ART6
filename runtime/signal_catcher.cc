@@ -40,6 +40,12 @@
 #include "thread_list.h"
 #include "utils.h"
 
+// leaktracer head file *waanan*
+// #include "leaktracer/leaktracer.h"
+// #define LOG_TAG "LeakTracer"
+// #include <utils/Log.h>
+// <<
+
 namespace art {
 
 static void DumpCmdLine(std::ostream& os) {
@@ -63,6 +69,8 @@ static void DumpCmdLine(std::ostream& os) {
   os << "Cmd line: " << GetCmdLine() << "\n";
 #endif
 }
+
+
 
 SignalCatcher::SignalCatcher(const std::string& stack_trace_file)
     : stack_trace_file_(stack_trace_file),
@@ -198,6 +206,8 @@ void* SignalCatcher::Run(void* arg) {
   SignalSet signals;
   signals.Add(SIGQUIT);
   signals.Add(SIGUSR1);
+  // *waanan*
+  // signals.Add(SIGUSR2);
 
   while (true) {
     int signal_number = signal_catcher->WaitForSignal(self, signals);
@@ -205,6 +215,9 @@ void* SignalCatcher::Run(void* arg) {
       runtime->DetachCurrentThread();
       return nullptr;
     }
+    // *waanan*
+    // leaktracer::LeakTracer* instance;
+    // <<
 
     switch (signal_number) {
     case SIGQUIT:
@@ -213,6 +226,15 @@ void* SignalCatcher::Run(void* arg) {
     case SIGUSR1:
       signal_catcher->HandleSigUsr1();
       break;
+      // *waanan*
+      // case SIGUSR2:
+      // Log quit information.
+      // ALOGD("Get quit sig from ActivityManager, SIG :  %d \n", SIGUSR2);
+      // instance = leaktracer::LeakTracer::Instance();
+      // instance->AppFinished();
+      // delete instance;
+      // kill(getpid(),SIGKILL);
+      // break;
     default:
       LOG(ERROR) << "Unexpected signal %d" << signal_number;
       break;
