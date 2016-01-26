@@ -23,6 +23,11 @@
 
 #include "read_barrier-inl.h"
 
+// *waanan*
+#include "leaktracer/leaktracer-inl.h"
+// <<
+
+
 namespace art {
 
 template<class MirrorType>
@@ -32,8 +37,12 @@ inline MirrorType* GcRoot<MirrorType>::Read() const {
       ReadBarrier::BarrierForRoot<mirror::Object, kReadBarrierOption>(&root_));
 }
 template<class MirrorType>
-inline GcRoot<MirrorType>::GcRoot(MirrorType* ref)
-    : root_(mirror::CompressedReference<mirror::Object>::FromMirrorPtr(ref)) { }
+inline GcRoot<MirrorType>::GcRoot(MirrorType* ref)  {
+  // *waanan*
+  ref   = leaktracer::ClearAccessBit<MirrorType>(ref);
+  root_ = mirror::CompressedReference<mirror::Object>::FromMirrorPtr(ref);
+  // <<
+}
 
 inline std::string RootInfo::ToString() const {
   std::ostringstream oss;

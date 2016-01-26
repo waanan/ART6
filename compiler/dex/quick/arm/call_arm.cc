@@ -192,6 +192,13 @@ void ArmMir2Lir::GenMonitorEnter(int opt_flags, RegLocation rl_src) {
   } else {
     // Explicit null-check as slow-path is entered using an IT.
     GenNullCheck(rs_r0, opt_flags);
+    // *waanan*
+    // set access bit
+    GenSetAccessBit(rs_r0, false);
+    // Load32Disp(rs_r0, 0, rs_r1);  // use r1 to store klass
+    // OpRegRegImm(kOpOr, rs_r1, rs_r1, 0x1);
+    // Store32Disp(rs_r0, 0, rs_r1);
+    // <<
     Load32Disp(rs_rARM_SELF, Thread::ThinLockIdOffset<4>().Int32Value(), rs_r2);
     NewLIR3(kThumb2Ldrex, rs_r1.GetReg(), rs_r0.GetReg(),
         mirror::Object::MonitorOffset().Int32Value() >> 2);
@@ -281,6 +288,12 @@ void ArmMir2Lir::GenMonitorExit(int opt_flags, RegLocation rl_src) {
   } else {
     // Explicit null-check as slow-path is entered using an IT.
     GenNullCheck(rs_r0, opt_flags);
+    // *waanan*
+    GenSetAccessBit(rs_r0, false);
+    // Load32Disp(rs_r0, 0, rs_r1);  // use r1 to store klass
+    // OpRegRegImm(kOpOr, rs_r1, rs_r1, 0x1);
+    // Store32Disp(rs_r0, 0, rs_r1);
+    // <<
     if (!kUseReadBarrier) {
       Load32Disp(rs_r0, mirror::Object::MonitorOffset().Int32Value(), rs_r1);  // Get lock
     } else {

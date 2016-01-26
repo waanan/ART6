@@ -2492,12 +2492,12 @@ class JNI {
   // LeakTracer Start *waanan*
     int errcode = -1;
     if ((errcode = leaktracer::LeakTracer::Create(proc_name))) {
-      if(errcode ==42) {
-        LOG(WARNING) << "LeakTracer Don't choose to track This APP!";      
+      if (errcode ==42) {
+        LOG(WARNING) << "LeakTracer Don't choose to track This APP!";
       } else {
-        LOG(WARNING) << "LeakTracer start failed, errcode is " << errcode;    
+        LOG(WARNING) << "LeakTracer start failed, errcode is " << errcode;
       }
-    } 
+    }
   }
   // <<
 };

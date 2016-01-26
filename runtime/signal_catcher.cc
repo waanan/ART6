@@ -41,9 +41,9 @@
 #include "utils.h"
 
 // leaktracer head file *waanan*
-// #include "leaktracer/leaktracer.h"
-// #define LOG_TAG "LeakTracer"
-// #include <utils/Log.h>
+#include "leaktracer/leaktracer.h"
+#define LOG_TAG "LeakTracer"
+#include <utils/Log.h>
 // <<
 
 namespace art {
@@ -205,10 +205,10 @@ void* SignalCatcher::Run(void* arg) {
   // Set up mask with signals we want to handle.
   SignalSet signals;
   signals.Add(SIGQUIT);
-  signals.Add(SIGUSR1);
   // *waanan*
+  signals.Add(SIGUSR1);
   // signals.Add(SIGUSR2);
-
+  // <<
   while (true) {
     int signal_number = signal_catcher->WaitForSignal(self, signals);
     if (signal_catcher->ShouldHalt()) {
@@ -216,7 +216,7 @@ void* SignalCatcher::Run(void* arg) {
       return nullptr;
     }
     // *waanan*
-    // leaktracer::LeakTracer* instance;
+    leaktracer::LeakTracer* instance;
     // <<
 
     switch (signal_number) {
@@ -224,17 +224,19 @@ void* SignalCatcher::Run(void* arg) {
       signal_catcher->HandleSigQuit();
       break;
     case SIGUSR1:
-      signal_catcher->HandleSigUsr1();
-      break;
-      // *waanan*
-      // case SIGUSR2:
+     // signal_catcher->HandleSigUsr1();
+     // break;
+    //   // *waanan*
+    //  case SIGUSR2:
       // Log quit information.
-      // ALOGD("Get quit sig from ActivityManager, SIG :  %d \n", SIGUSR2);
-      // instance = leaktracer::LeakTracer::Instance();
-      // instance->AppFinished();
-      // delete instance;
-      // kill(getpid(),SIGKILL);
-      // break;
+      ALOGD("Get quit sig from ActivityManager, SIG :  %d \n", SIGUSR1);
+      if (leaktracer::gLeakTracerIsTracking) {
+        instance = leaktracer::LeakTracer::Instance();
+        instance->AppFinished();
+        delete instance;
+      }
+      break;
+      // <<
     default:
       LOG(ERROR) << "Unexpected signal %d" << signal_number;
       break;

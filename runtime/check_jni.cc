@@ -3376,15 +3376,14 @@ class CheckJNI {
     }
   }
 
-public:
+ public:
   // *waanan*
   // define this function to avoid compile error
   static void LeakTracerStartTracking(const char *proc_name) {
-    if(proc_name == nullptr){
+    if (proc_name == nullptr) {
     }
   }
   // <<
-
 };
 
 const JNINativeInterface gCheckNativeInterface = {

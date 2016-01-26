@@ -35,8 +35,8 @@
 #include "verify_object-inl.h"
 
 // *waanan* for debug
-//#define LOG_TAG "LeakTracer"
-//#include <utils/Log.h>
+// #define LOG_TAG "LeakTracer"
+// #include <utils/Log.h>
 // <<
 
 namespace art {

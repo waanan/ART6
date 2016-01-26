@@ -2501,7 +2501,7 @@ void Heap::LogGC(GcCause gc_cause, collector::GarbageCollector* collector) {
     }
   }
   // *waanan*
-  // if (log_gc) 
+  // if (log_gc)
   // <<
   {
     const size_t percent_free = GetPercentFree();

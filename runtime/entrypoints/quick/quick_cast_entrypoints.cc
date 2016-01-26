@@ -16,6 +16,10 @@
 
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
+// *waanan
+#include "leaktracer/leaktracer-inl.h"
+// <<
+
 
 namespace art {
 
@@ -24,6 +28,17 @@ extern "C" uint32_t artIsAssignableFromCode(mirror::Class* klass, mirror::Class*
     SHARED_LOCKS_REQUIRED(Locks::mutator_lock_) {
   DCHECK(klass != nullptr);
   DCHECK(ref_class != nullptr);
+  // *waanan*
+  // // in case that access bit is not cleared
+  // uintptr_t raw = reinterpret_cast<uintptr_t>(klass);
+  // raw &= ~kAccessBit;
+  // klass = reinterpret_cast<mirror::Class*>(raw);
+  klass = leaktracer::ClearAccessBit<mirror::Class>(klass);
+  // raw = reinterpret_cast<uintptr_t>(ref_class);
+  // raw &= ~kAccessBit;
+  // ref_class = reinterpret_cast<mirror::Class*>(raw);
+  ref_class = leaktracer::ClearAccessBit<mirror::Class>(ref_class);
+  // <<
   return klass->IsAssignableFrom(ref_class) ? 1 : 0;
 }
 

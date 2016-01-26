@@ -682,7 +682,10 @@ void Runtime::DidForkFromZygote(JNIEnv* env, NativeBridgeAction action, const ch
 
 void Runtime::StartSignalCatcher() {
   if (!is_zygote_) {
+    //  *waanan* 
+    //  TODO: don't start signal_cather so we can catch signal by ourself  
     signal_catcher_ = new SignalCatcher(stack_trace_file_);
+    //
   }
 }
 
@@ -868,10 +871,10 @@ bool Runtime::Init(const RuntimeOptions& raw_options, bool ignore_unrecognized) 
   // LeakTracer Start *waanan*
   int errcode = -1;
   if ((errcode = leaktracer::LeakTracer::Create(nullptr))) {
-    if(errcode ==42) {
-      LOG(WARNING) << "LeakTracer Don't choose to track This APP!";      
+    if (errcode ==42) {
+      LOG(WARNING) << "LeakTracer Don't choose to track This APP!";
     } else {
-      LOG(WARNING) << "LeakTracer start failed, errcode is " << errcode;    
+      LOG(WARNING) << "LeakTracer start failed, errcode is " << errcode;
     }
   }
 

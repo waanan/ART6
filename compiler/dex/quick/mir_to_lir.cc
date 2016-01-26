@@ -21,6 +21,9 @@
 #include "driver/compiler_driver.h"
 #include "primitive.h"
 #include "thread-inl.h"
+// *waanan*
+#include "leaktracer/leaktracer-inl.h"
+// <<
 
 namespace art {
 
@@ -634,6 +637,9 @@ void Mir2Lir::CompileDalvikInstruction(MIR* mir, BasicBlock* bb, LIR* label_list
       rl_src[0] = LoadValue(rl_src[0], kRefReg);
       GenNullCheck(rl_src[0].reg, opt_flags);
       rl_result = EvalLoc(rl_dest, kCoreReg, true);
+      // *waanan*
+      GenSetAccessBit(rl_src[0].reg, false);
+      // <<
       Load32Disp(rl_src[0].reg, len_offset, rl_result.reg);
       MarkPossibleNullPointerException(opt_flags);
       StoreValue(rl_dest, rl_result);
@@ -1457,5 +1463,26 @@ Mir2Lir::ShortyArg Mir2Lir::InToRegStorageMapping::GetShorty(size_t in_position)
   DCHECK_NE(mapping_[in_position].first.GetType(), kInvalidShorty);
   return mapping_[in_position].first;
 }
+
+  // *waanan*
+  void Mir2Lir::GenSetAccessBit(const RegStorage& base, bool really) {
+    if (really) {
+      RegStorage klass = AllocTemp();
+
+      if (klass.Valid()) {
+        const int kOffset = mirror::Object::ClassOffset().Int32Value();
+        Load32Disp(base, kOffset, klass);
+        OpRegRegImm(kOpOr, klass, klass, leaktracer::kAccessBit);
+        Store32Disp(base, kOffset, klass);
+        FreeTemp(klass);
+      }
+    }
+  }
+
+  void Mir2Lir::GenClearAccessBit(const RegStorage& klass, bool really) {
+    if (really)
+      OpRegRegImm(kOpAnd, klass, klass, ~leaktracer::kAccessBit);
+  }
+  // <<
 
 }  // namespace art

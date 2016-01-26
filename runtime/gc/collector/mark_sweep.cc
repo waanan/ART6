@@ -494,6 +494,14 @@ inline void MarkSweep::PushOnMarkStack(Object* obj) {
   }
   // The object must be pushed on to the mark stack.
   mark_stack_->PushBack(obj);
+
+  // *waanan*
+  if (leaktracer::gLeakTracerIsTracking && leaktracer::Accessed(obj)) {
+    leaktracer::LeakTracer *instance = leaktracer::LeakTracer::Instance();
+    obj->SetClass(leaktracer::ClearAccessBit<mirror::Class>(obj->GetClass()));
+    instance->AccessObject(obj);
+  }
+  // <<
 }
 
 inline bool MarkSweep::MarkObjectParallel(const Object* obj) {
@@ -724,6 +732,13 @@ class MarkStackTask : public Task {
     DCHECK(obj != nullptr);
     DCHECK_LT(mark_stack_pos_, kMaxSize);
     mark_stack_[mark_stack_pos_++].Assign(obj);
+    // *waanan*
+    if (leaktracer::gLeakTracerIsTracking && leaktracer::Accessed(obj)) {
+      leaktracer::LeakTracer *instance = leaktracer::LeakTracer::Instance();
+      obj->SetClass(leaktracer::ClearAccessBit<mirror::Class>(obj->GetClass()));
+      instance->AccessObject(obj);
+    }
+    // <<
   }
 
   virtual void Finalize() {

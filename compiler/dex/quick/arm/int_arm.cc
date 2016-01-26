@@ -1398,6 +1398,10 @@ void ArmMir2Lir::GenArrayGet(int opt_flags, OpSize size, RegLocation rl_array,
   /* null object? */
   GenNullCheck(rl_array.reg, opt_flags);
 
+  // *waanan*
+  GenSetAccessBit(rl_array.reg, false);
+  // <<
+
   bool needs_range_check = (!(opt_flags & MIR_IGNORE_RANGE_CHECK));
   RegStorage reg_len;
   if (needs_range_check) {
@@ -1495,6 +1499,10 @@ void ArmMir2Lir::GenArrayPut(int opt_flags, OpSize size, RegLocation rl_array,
 
   /* null object? */
   GenNullCheck(rl_array.reg, opt_flags);
+
+  // *waanan*
+  GenSetAccessBit(rl_array.reg, false);
+  // <<
 
   bool needs_range_check = (!(opt_flags & MIR_IGNORE_RANGE_CHECK));
   RegStorage reg_len;

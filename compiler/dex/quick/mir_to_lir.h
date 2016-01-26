@@ -548,6 +548,21 @@ class Mir2Lir {
 
     virtual ~Mir2Lir() {}
 
+    // *waanan*
+    /**
+     * @brief Generate code to set the access bit of the given object.
+     * @param ref reference to object, a.k.a, the base address of the object.
+     * @param really generate code if really is true, otherwise nothing happens
+     *        when calling this function.
+     */
+    void GenSetAccessBit(const RegStorage& ref, bool really);
+    /**
+     * @brief Generage code to clear the least bit of the value in register klass.
+     * @param klass is the class pointer valie.
+     */
+    void GenClearAccessBit(const RegStorage& klass, bool really);
+    // <<
+
     /**
      * @brief Decodes the LIR offset.
      * @return Returns the scaled offset of LIR.

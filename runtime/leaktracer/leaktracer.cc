@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <vector>
 #include <set>
+#include <fstream>
 
 #include "gc/heap.h"
 #include "runtime.h"
@@ -69,6 +70,11 @@ namespace art {
 
     static void InitBenchmarkSet() {
       // for benchmarks started by the ActivityManager
+      std::ifstream ifs("/data/local/tmp/track");
+      std::string  app_name;
+      while (getline(ifs, app_name)) {
+	gBenchmarks.insert(app_name);
+      }
       gBenchmarks.insert("com.eembc.andebench");
       gBenchmarks.insert("com.dhry2");
       gBenchmarks.insert("com.futuremark.dmandroid.application");
@@ -153,8 +159,8 @@ namespace art {
         // if we are running from the command line,
         // try to get the benchmark name.
         if (!strcmp(name, "dalvikvm")) {
-          GetBenchmarkName(name, kBufSize, getpid());
-          track = true;
+        GetBenchmarkName(name, kBufSize, getpid());
+        track = true;
         }
       }
 
@@ -184,15 +190,15 @@ namespace art {
           gLogOnly = true;
 
         // if(false == gLogOnly) {
-        //   if (signal(SIGUSR2, exitSigHandler) != SIG_ERR)
+        //   if (signal(SIGUSR1, exitSigHandler) != SIG_ERR)
         //     // Log quit information.
         //     ALOGD("Register Quit sig hander!\n");
         // }
 
         gLeakTracerIsTracking = true;
         Instance()->AppStarted();
-      }else {
-	return 42; // 42 represent that we don't Track this APP
+      } else {
+        return 42;  // 42 represent that we don't Track this APP
       }
 
       if (NULL == proc_name)
@@ -206,7 +212,7 @@ namespace art {
       if (gLeakTracerIsTracking && !gLogOnly) {
         uint32_t klass = *reinterpret_cast<uint32_t*>(addr);
         Thread *self = Thread::Current();
-        // size_t array_size = self->GetArrayAllocSize();
+        size_t array_size = self->GetArrayAllocSize();
         bool is_large_object = self->GetIsLargeObj();
         self->SetIsLargeObj(false);
         ObjectKind obj_kind = kNormalObject;
@@ -216,19 +222,15 @@ namespace art {
         //
         // the least two bits of klass indicates what kind of object is, and
         // if large or array object, their size will follow klass immediately.
-        //
-        // if (array_size) {
-        //   DCHECK_EQ(size, array_size);
-        //   self->SetArrayAllocSize(0U);
-        //   obj_kind = kArrayObject;
-        //   ALOGD("Meeting Array Object: %p  Size: %d\n", addr, (int)size);
-        // } else if (size > gc::Heap::kDefaultLargeObjectThreshold) {
-        //   obj_kind = kLargeObject;
-        //   ALOGD("Meeting String Large Object: %p   Size:%d\n", addr, (int)size);
-        // }
-        if(is_large_object) {
+        // 
+        if (is_large_object) {
           obj_kind = kLargeObject;
-          ALOGD("Meeting Large Object: %p   Size:%d\n", addr, (int)size);
+          // ALOGD("Meeting Large Object: %p   Size:%d\n", addr, static_cast<int>(size));
+        } else if (array_size) {
+          DCHECK_EQ(size, array_size);
+          self->SetArrayAllocSize(0U);
+          obj_kind = kArrayObject;
+          // ALOGD("Meeting Array Object: %p  Size: %d\n", addr, (int)size);
         }
 
         u32 data[4], count = 0;
@@ -301,8 +303,8 @@ namespace art {
         ReaderMutexLock mu(Thread::Current(), *Locks::mutator_lock_);
         std::string class_name = PrettyDescriptor(klass);
         uint32_t obj_size = klass->GetObjectSize();
-        if (obj_size == 0U)
-          obj_size = klass->GetClassSize();
+        // if (obj_size == 0U)
+        //   obj_size = klass->GetClassSize();
 
         // leading character 'c' means this line is Class information
         // NOTE: object size may be zero if class is interface or abstract
@@ -390,7 +392,6 @@ namespace art {
         } else {
           uint32_t raw = kGcEnd;
           WriteSafe(&raw, sizeof raw);
-          DumpTypeAndMethodInfo();
         }
       }
     }

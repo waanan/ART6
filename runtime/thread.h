@@ -1297,7 +1297,6 @@ class Thread {
     size_t array_alloc_size;
     bool is_large_obj;
     // <<
-
   } tlsPtr_;
 
   // Guards the 'interrupted_' and 'wait_monitor_' members.
