@@ -73,7 +73,7 @@ namespace art {
       std::ifstream ifs("/data/local/tmp/track");
       std::string  app_name;
       while (getline(ifs, app_name)) {
-	gBenchmarks.insert(app_name);
+        gBenchmarks.insert(app_name);
       }
       gBenchmarks.insert("com.eembc.andebench");
       gBenchmarks.insert("com.dhry2");
@@ -222,7 +222,7 @@ namespace art {
         //
         // the least two bits of klass indicates what kind of object is, and
         // if large or array object, their size will follow klass immediately.
-        // 
+        //
         if (is_large_object) {
           obj_kind = kLargeObject;
           // ALOGD("Meeting Large Object: %p   Size:%d\n", addr, static_cast<int>(size));

@@ -655,7 +655,6 @@ void Runtime::DidForkFromZygote(JNIEnv* env, NativeBridgeAction action, const ch
         UnloadNativeBridge();
         is_native_bridge_loaded_ = false;
         break;
-
       case NativeBridgeAction::kInitialize:
         InitializeNativeBridge(env, isa);
         break;
@@ -682,8 +681,8 @@ void Runtime::DidForkFromZygote(JNIEnv* env, NativeBridgeAction action, const ch
 
 void Runtime::StartSignalCatcher() {
   if (!is_zygote_) {
-    //  *waanan* 
-    //  TODO: don't start signal_cather so we can catch signal by ourself  
+    // *waanan*
+    // TODO: don't start signal_cather so we can catch signal by ourself
     signal_catcher_ = new SignalCatcher(stack_trace_file_);
     //
   }

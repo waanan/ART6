@@ -129,6 +129,7 @@ ADD_TEST_EQ(MIRROR_OBJECT_LOCK_WORD_OFFSET, art::mirror::Object::MonitorOffset()
 #else
 #define MIRROR_OBJECT_HEADER_SIZE 8
 #endif
+
 ADD_TEST_EQ(size_t(MIRROR_OBJECT_HEADER_SIZE), sizeof(art::mirror::Object))
 
 // Offsets within java.lang.Class.

@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <vector>
 #include <set>
+#include <fstream>
 
 #include "gc/heap.h"
 #include "runtime.h"
@@ -69,6 +70,11 @@ namespace art {
 
     static void InitBenchmarkSet() {
       // for benchmarks started by the ActivityManager
+      std::ifstream ifs("/data/local/tmp/track");
+      std::string  app_name;
+      while (getline(ifs, app_name)) {
+	gBenchmarks.insert(app_name);
+      }
       gBenchmarks.insert("com.eembc.andebench");
       gBenchmarks.insert("com.dhry2");
       gBenchmarks.insert("com.futuremark.dmandroid.application");

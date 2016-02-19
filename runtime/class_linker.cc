@@ -1466,8 +1466,7 @@ mirror::PointerArray* ClassLinker::AllocPointerArray(Thread* self, size_t length
 
 mirror::DexCache* ClassLinker::AllocDexCache(Thread* self, const DexFile& dex_file) {
   StackHandleScope<6> hs(self);
-  auto dex_cache(hs.NewHandle(down_cast<mirror::DexCache*>(
-      GetClassRoot(kJavaLangDexCache)->AllocObject(self))));
+  auto dex_cache(hs.NewHandle(down_cast<mirror::DexCache*>(GetClassRoot(kJavaLangDexCache)->AllocObject(self))));
   if (dex_cache.Get() == nullptr) {
     self->AssertPendingOOMException();
     return nullptr;
