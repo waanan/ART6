@@ -556,11 +556,9 @@ class Mir2Lir {
      *        when calling this function.
      */
     void GenSetAccessBit(const RegStorage& ref, bool really);
-    /**
-     * @brief Generage code to clear the least bit of the value in register klass.
-     * @param klass is the class pointer valie.
-     */
-    void GenClearAccessBit(const RegStorage& klass, bool really);
+    // @brief Generage code to clear the least bit of the value in register klass.
+    // @param klass is the class pointer valie.
+    // void GenClearAccessBit(const RegStorage& klass, bool really);
     // <<
 
     /**

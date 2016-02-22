@@ -499,7 +499,7 @@ static void CommonCallCodeLoadClassIntoArg0(const CallInfo* info, Mir2Lir* cg) {
                   kNotVolatile);
   // *waanan*
   // cg->OpRegRegImm(kOpAnd, cg->TargetReg(kArg0, kRef), cg->TargetReg(kArg0, kRef), ~leaktracer::kAccessBit);
-  cg->GenClearAccessBit(cg->TargetReg(kArg0, kRef), true);
+  // cg->GenClearAccessBit(cg->TargetReg(kArg0, kRef), true);
   // <<
   cg->MarkPossibleNullPointerException(info->opt_flags);
 }

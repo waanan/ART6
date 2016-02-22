@@ -39,7 +39,7 @@ inline MirrorType* GcRoot<MirrorType>::Read() const {
 template<class MirrorType>
 inline GcRoot<MirrorType>::GcRoot(MirrorType* ref)  {
   // *waanan*
-  ref   = leaktracer::ClearAccessBit<MirrorType>(ref);
+  // ref   = leaktracer::ClearAccessBit<MirrorType>(ref);
   root_ = mirror::CompressedReference<mirror::Object>::FromMirrorPtr(ref);
   // <<
 }

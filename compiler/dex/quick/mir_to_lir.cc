@@ -638,7 +638,7 @@ void Mir2Lir::CompileDalvikInstruction(MIR* mir, BasicBlock* bb, LIR* label_list
       GenNullCheck(rl_src[0].reg, opt_flags);
       rl_result = EvalLoc(rl_dest, kCoreReg, true);
       // *waanan*
-      GenSetAccessBit(rl_src[0].reg, false);
+      GenSetAccessBit(rl_src[0].reg, true);
       // <<
       Load32Disp(rl_src[0].reg, len_offset, rl_result.reg);
       MarkPossibleNullPointerException(opt_flags);
@@ -1467,22 +1467,29 @@ Mir2Lir::ShortyArg Mir2Lir::InToRegStorageMapping::GetShorty(size_t in_position)
   // *waanan*
   void Mir2Lir::GenSetAccessBit(const RegStorage& base, bool really) {
     if (really) {
-      RegStorage klass = AllocTemp();
+      RegStorage hash_code = AllocTemp();
 
-      if (klass.Valid()) {
-        const int kOffset = mirror::Object::ClassOffset().Int32Value();
-        Load32Disp(base, kOffset, klass);
-        OpRegRegImm(kOpOr, klass, klass, leaktracer::kAccessBit);
-        Store32Disp(base, kOffset, klass);
-        FreeTemp(klass);
+      if (hash_code.Valid()) {
+        LIR* target;
+        const int hOffset = mirror::Object::MonitorOffset().Int32Value();
+        Load32Disp(base, hOffset, hash_code);
+        OpRegRegImm(kOpAnd, hash_code, hash_code, leaktracer::kAccessMask);
+        OpRegImm(kOpCmp, hash_code, leaktracer::kAccessHash);
+        LIR* branch = OpCondBranch(kCondNe, nullptr);
+	Load32Disp(base, hOffset, hash_code);
+	OpRegRegImm(kOpOr, hash_code, hash_code, leaktracer::kAccessBit);
+        Store32Disp(base, hOffset, hash_code);
+        target = NewLIR0(kPseudoTargetLabel);
+        FreeTemp(hash_code);
+        branch->target = target;
       }
     }
   }
 
-  void Mir2Lir::GenClearAccessBit(const RegStorage& klass, bool really) {
-    if (really)
-      OpRegRegImm(kOpAnd, klass, klass, ~leaktracer::kAccessBit);
-  }
+  // void Mir2Lir::GenClearAccessBit(const RegStorage& klass, bool really) {
+  //   if (really)
+  //     OpRegRegImm(kOpAnd, klass, klass, ~leaktracer::kAccessBit);
+  // }
   // <<
 
 }  // namespace art

@@ -450,6 +450,13 @@ class MANAGED LOCKABLE Object {
   // Generate an identity hash code. Public for object test.
   static uint32_t GenerateIdentityHashCode();
 
+  // Used for access action test.
+  uint32_t GetM() {
+    return monitor_;
+  }
+
+  bool isLTAccessed();
+
  protected:
   // Accessors for non-Java type fields
   template<class T, VerifyObjectFlags kVerifyFlags = kDefaultVerifyFlags, bool kIsVolatile = false>

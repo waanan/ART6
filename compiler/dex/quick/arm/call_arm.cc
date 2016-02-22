@@ -194,7 +194,7 @@ void ArmMir2Lir::GenMonitorEnter(int opt_flags, RegLocation rl_src) {
     GenNullCheck(rs_r0, opt_flags);
     // *waanan*
     // set access bit
-    GenSetAccessBit(rs_r0, false);
+    // GenSetAccessBit(rs_r0, false);
     // Load32Disp(rs_r0, 0, rs_r1);  // use r1 to store klass
     // OpRegRegImm(kOpOr, rs_r1, rs_r1, 0x1);
     // Store32Disp(rs_r0, 0, rs_r1);
@@ -289,7 +289,7 @@ void ArmMir2Lir::GenMonitorExit(int opt_flags, RegLocation rl_src) {
     // Explicit null-check as slow-path is entered using an IT.
     GenNullCheck(rs_r0, opt_flags);
     // *waanan*
-    GenSetAccessBit(rs_r0, false);
+    // GenSetAccessBit(rs_r0, false);
     // Load32Disp(rs_r0, 0, rs_r1);  // use r1 to store klass
     // OpRegRegImm(kOpOr, rs_r1, rs_r1, 0x1);
     // Store32Disp(rs_r0, 0, rs_r1);

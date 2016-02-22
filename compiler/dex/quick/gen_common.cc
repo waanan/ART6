@@ -439,8 +439,8 @@ void Mir2Lir::GenCompareZeroAndBranch(Instruction::Code opcode, RegLocation rl_s
   }
   // *waanan*
   // in case rl_src is klass pointer
-  if (rl_src.ref)
-    GenClearAccessBit(rl_src.reg, false);
+  // if (rl_src.ref)
+  // GenClearAccessBit(rl_src.reg, false);
   // <<
   OpCmpImmBranch(cond, rl_src.reg, 0, taken);
 }
@@ -731,7 +731,7 @@ void Mir2Lir::GenSput(MIR* mir, RegLocation rl_src, OpSize size) {
     if (IsRef(size) && !mir_graph_->IsConstantNullRef(rl_src)) {
       MarkGCCard(mir->optimization_flags, rl_src.reg, r_base);
       // *waanan*
-      GenSetAccessBit(rl_src.reg, false);
+      GenSetAccessBit(rl_src.reg, true);
       // <<
     }
     FreeTemp(r_base);
@@ -801,7 +801,7 @@ void Mir2Lir::GenSget(MIR* mir, RegLocation rl_dest, OpSize size, Primitive::Typ
       LoadRefDisp(r_base, field_offset, rl_result.reg, field_info.IsVolatile() ? kVolatile :
           kNotVolatile);
       // *waanan*
-      GenSetAccessBit(rl_result.reg, false);
+      GenSetAccessBit(rl_result.reg, true);
       // <<
     } else {
       LoadBaseDisp(r_base, field_offset, rl_result.reg, size, field_info.IsVolatile() ?
@@ -889,7 +889,7 @@ void Mir2Lir::GenIGet(MIR* mir, int opt_flags, OpSize size, Primitive::Type type
     // *waanan*
     // slow path field get operation will be handled by our c code
     // in quick_field_entrypoints.cc
-    GenSetAccessBit(rl_obj.reg, false);
+    GenSetAccessBit(rl_obj.reg, true);
     // <<
     RegLocation rl_result = EvalLoc(rl_dest, reg_class, true);
     int field_offset = field_info.FieldOffset().Int32Value();
@@ -902,8 +902,8 @@ void Mir2Lir::GenIGet(MIR* mir, int opt_flags, OpSize size, Primitive::Type type
                               field_info.IsVolatile() ? kVolatile : kNotVolatile);
     }
     // *waanan*
-    if (field_offset == 0)      // Are we loading klass pointer?
-      GenClearAccessBit(rl_result.reg, true);
+    // if (field_offset == 0)      // Are we loading klass pointer?
+    // GenClearAccessBit(rl_result.reg, true);
     // <<
     MarkPossibleNullPointerExceptionAfter(opt_flags, load_lir);
     if (IsWide(size)) {
@@ -983,7 +983,7 @@ void Mir2Lir::GenIPut(MIR* mir, int opt_flags, OpSize size,
     // *waanan*
     // slow path field put operation will be handled by our c code
     // in quick_field_entrypoints.cc
-    GenSetAccessBit(rl_obj.reg, false);
+    GenSetAccessBit(rl_obj.reg, true);
     // <<
     int field_offset = field_info.FieldOffset().Int32Value();
     LIR* null_ck_insn;
@@ -1217,9 +1217,8 @@ void Mir2Lir::GenInstanceofFinal(bool use_declaring_class, uint32_t type_idx, Re
   }
 
   // *waanan*
-  GenSetAccessBit(object.reg, false);
-  // GenClearAccessBit(check_class, false);
-  GenClearAccessBit(object_class, true);
+  GenSetAccessBit(object.reg, true);
+  // GenClearAccessBit(object_class, true);
   // <<
 
   // FIXME: what should we be comparing here? compressed or decompressed references?
@@ -1303,8 +1302,7 @@ void Mir2Lir::GenInstanceofCallingHelper(bool needs_access_check, bool type_know
               ref_class_reg, kNotVolatile);
   /* kArg0 is ref, kArg1 is ref->klass_, kArg2 is class */
   // *waanan*
-  GenSetAccessBit(ref_reg, false);
-  GenClearAccessBit(ref_class_reg, true);
+  GenSetAccessBit(ref_reg, true);
   // GenClearAccessBit(class_reg, false);
   // <<
   LIR* branchover = nullptr;
@@ -1467,8 +1465,8 @@ void Mir2Lir::GenCheckCast(int opt_flags, uint32_t insn_idx, uint32_t type_idx,
                 TargetReg(kArg1, kRef), kNotVolatile);
 
     // *waanan*
-    GenSetAccessBit(TargetReg(kArg0, kRef), false);   // mark object accessed
-    GenClearAccessBit(TargetReg(kArg1, kRef), true);  // make klass pointer clean
+    GenSetAccessBit(TargetReg(kArg0, kRef), true);   // mark object accessed
+    // GenClearAccessBit(TargetReg(kArg1, kRef), true);  // make klass pointer clean
     // <<
 
     LIR* branch2 = OpCmpBranch(kCondNe, TargetReg(kArg1, kRef), class_reg, nullptr);

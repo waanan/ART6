@@ -202,8 +202,10 @@ inline mirror::Object* Heap::AllocObjectWithAllocator(Thread* self, mirror::Clas
 
   // *waanan*
   // all alloc action merge here
-  if (leaktracer::gLeakTracerIsTracking)
+  if (leaktracer::gLeakTracerIsTracking) {
+    obj->IdentityHashCode();
     leaktracer::LeakTracer::Instance()->NewObject(obj, byte_count);
+  }
   // <<
   return obj;
 }

@@ -35,7 +35,7 @@
 #include "throwable.h"
 
 // >> *waanan*
-#include "leaktracer/leaktracer-inl.h"
+// #include "leaktracer/leaktracer-inl.h"
 // <<
 
 
@@ -50,8 +50,8 @@ inline uint32_t Object::ClassSize(size_t pointer_size) {
 template<VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
 inline Class* Object::GetClass() {
   // >> *waanan*
-  Class *klass = GetFieldObject<Class, kVerifyFlags, kReadBarrierOption>(
-    OFFSET_OF_OBJECT_MEMBER(Object, klass_));
+  // Class *klass = GetFieldObject<Class, kVerifyFlags, kReadBarrierOption>(
+  //  OFFSET_OF_OBJECT_MEMBER(Object, klass_));
   //
   // Magic: I don't know why the access bit still not cleared, since
   // we have cleared it in GetFieldObject any way. WHY???????
@@ -59,10 +59,10 @@ inline Class* Object::GetClass() {
   // uintptr_t raw = reinterpret_cast<uintptr_t>(klass);
   // DCHECK_EQ((raw & kAccessBit), 0U);
   // raw &= ~kAccessBit;
-  return leaktracer::ClearAccessBit<Class>(klass);
+  // return leaktracer::ClearAccessBit<Class>(klass);
   // <<
-  // return GetFieldObject<Class, kVerifyFlags, kReadBarrierOption>(
-  //     OFFSET_OF_OBJECT_MEMBER(Object, klass_));
+  return GetFieldObject<Class, kVerifyFlags, kReadBarrierOption>(
+      OFFSET_OF_OBJECT_MEMBER(Object, klass_));
 }
 
 template<VerifyObjectFlags kVerifyFlags>
@@ -805,7 +805,7 @@ inline T* Object::GetFieldObject(MemberOffset field_offset) {
   // }
   // raw_bits &= ~kAccessBit;
   // raw_addr = reinterpret_cast<byte*>(raw_bits);
-  raw_addr = leaktracer::ClearAccessBit<uint8_t>(raw_addr);
+  // raw_addr = leaktracer::ClearAccessBit<uint8_t>(raw_addr);
   // <<
   HeapReference<T>* objref_addr = reinterpret_cast<HeapReference<T>*>(raw_addr);
   T* result = ReadBarrier::Barrier<T, kReadBarrierOption>(this, field_offset, objref_addr);
@@ -821,9 +821,9 @@ inline T* Object::GetFieldObject(MemberOffset field_offset) {
   // // DCHECK_EQ((raw_bits & kAccessBit), 0U);
   // raw_bits &= ~kAccessBit;
   // result = reinterpret_cast<T*>(raw_bits);
-  return leaktracer::ClearAccessBit<T>(result);
+  // return leaktracer::ClearAccessBit<T>(result);
   // <<
-  // return result;
+  return result;
 }
 
 template<class T, VerifyObjectFlags kVerifyFlags, ReadBarrierOption kReadBarrierOption>
@@ -1033,8 +1033,8 @@ inline void Object::VisitReferences(const Visitor& visitor,
                                     const JavaLangRefVisitor& ref_visitor) {
   mirror::Class* klass = GetClass<kVerifyFlags>();
   // >> *waanan*
-  uintptr_t raw = reinterpret_cast<uintptr_t>(klass);
-  DCHECK_EQ((raw & leaktracer::kAccessBit), 0U);
+  // uintptr_t raw = reinterpret_cast<uintptr_t>(klass);
+  // DCHECK_EQ((raw & leaktracer::kAccessBit), 0U);
   // <<
   if (klass == Class::GetJavaLangClass()) {
     AsClass<kVerifyNone>()->VisitReferences<kVisitClass>(klass, visitor);

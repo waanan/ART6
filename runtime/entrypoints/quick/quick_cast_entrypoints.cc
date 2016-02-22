@@ -17,7 +17,7 @@
 #include "mirror/class-inl.h"
 #include "mirror/object-inl.h"
 // *waanan
-#include "leaktracer/leaktracer-inl.h"
+// #include "leaktracer/leaktracer-inl.h"
 // <<
 
 
@@ -33,11 +33,11 @@ extern "C" uint32_t artIsAssignableFromCode(mirror::Class* klass, mirror::Class*
   // uintptr_t raw = reinterpret_cast<uintptr_t>(klass);
   // raw &= ~kAccessBit;
   // klass = reinterpret_cast<mirror::Class*>(raw);
-  klass = leaktracer::ClearAccessBit<mirror::Class>(klass);
+  // klass = leaktracer::ClearAccessBit<mirror::Class>(klass);
   // raw = reinterpret_cast<uintptr_t>(ref_class);
   // raw &= ~kAccessBit;
   // ref_class = reinterpret_cast<mirror::Class*>(raw);
-  ref_class = leaktracer::ClearAccessBit<mirror::Class>(ref_class);
+  // ref_class = leaktracer::ClearAccessBit<mirror::Class>(ref_class);
   // <<
   return klass->IsAssignableFrom(ref_class) ? 1 : 0;
 }

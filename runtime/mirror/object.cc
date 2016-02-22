@@ -36,6 +36,11 @@
 #include "throwable.h"
 #include "well_known_classes.h"
 
+// >> *waanan*
+#include "leaktracer/leaktracer-inl.h"
+// <<
+
+
 namespace art {
 namespace mirror {
 
@@ -143,7 +148,10 @@ uint32_t Object::GenerateIdentityHashCode() {
     new_value = expected_value * 1103515245 + 12345;
   } while (!hash_code_seed.CompareExchangeWeakRelaxed(expected_value, new_value) ||
       (expected_value & LockWord::kHashMask) == 0);
-  return expected_value & LockWord::kHashMask;
+  // return expected_value & LockWord::kHashMask;
+  // *waanan*
+  return expected_value & leaktracer::kHashMask;
+  // <<
 }
 
 void Object::SetHashCodeSeed(uint32_t new_seed) {
@@ -162,7 +170,8 @@ int32_t Object::IdentityHashCode() const {
                                                     lw.ReadBarrierState());
         DCHECK_EQ(hash_word.GetState(), LockWord::kHashCode);
         if (const_cast<Object*>(this)->CasLockWordWeakRelaxed(lw, hash_word)) {
-          return hash_word.GetHashCode();
+          // *waanan*
+          return hash_word.GetHashCode() & leaktracer::kHashMask;
         }
         break;
       }
@@ -181,10 +190,12 @@ int32_t Object::IdentityHashCode() const {
         // Already inflated, return the has stored in the monitor.
         Monitor* monitor = lw.FatLockMonitor();
         DCHECK(monitor != nullptr);
-        return monitor->GetHashCode();
+        // *waanan*
+        return monitor->GetHashCode() & leaktracer::kHashMask;
       }
       case LockWord::kHashCode: {
-        return lw.GetHashCode();
+        // *waanan*
+        return lw.GetHashCode() & leaktracer::kHashMask;
       }
       default: {
         LOG(FATAL) << "Invalid state during hashcode " << lw.GetState();
@@ -194,6 +205,36 @@ int32_t Object::IdentityHashCode() const {
   }
   UNREACHABLE();
 }
+
+  // *waanan*
+  // return if object is accessed and clear AccessBit
+bool Object::isLTAccessed() {
+  ReaderMutexLock mu(Thread::Current(), *Locks::mutator_lock_);
+  LockWord lw = this->GetLockWord(false);
+  switch (lw.GetState()) {
+    case LockWord::kUnlocked: {
+      return false;
+    }
+    case LockWord::kThinLocked: {
+      return true;
+    }
+    case LockWord::kFatLocked: {
+      return true;
+    }
+    case LockWord::kHashCode: {
+      bool result = monitor_ & leaktracer::kAccessBit;
+      if(result) {
+        monitor_ &= ~leaktracer::kAccessBit; 
+      }
+      return result;
+    }
+    default: {
+      return false;
+    }
+  }
+}
+// <<
+
 
 void Object::CheckFieldAssignmentImpl(MemberOffset field_offset, Object* new_value) {
   Class* c = GetClass();

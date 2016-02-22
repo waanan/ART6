@@ -73,7 +73,7 @@ namespace art {
       std::ifstream ifs("/data/local/tmp/track");
       std::string  app_name;
       while (getline(ifs, app_name)) {
-	gBenchmarks.insert(app_name);
+        gBenchmarks.insert(app_name);
       }
       gBenchmarks.insert("com.eembc.andebench");
       gBenchmarks.insert("com.dhry2");
@@ -210,6 +210,28 @@ namespace art {
 
     void LeakTracer::NewObject(void *addr, size_t size) {
       if (gLeakTracerIsTracking && !gLogOnly) {
+        mirror::Object* obj = reinterpret_cast<mirror::Object*>(addr);
+        uint32_t monitor;
+        ReaderMutexLock mu(Thread::Current(), *Locks::mutator_lock_);
+        switch (obj->GetLockWord(false).GetState()) {
+          case LockWord::kUnlocked:
+            monitor = 0;
+            break;
+          case LockWord::kThinLocked:
+            monitor = 1;
+	    break;
+          case LockWord::kFatLocked:
+            monitor = 2;
+            break;    
+          case LockWord::kHashCode:
+            monitor = 3;
+            break;
+	  case LockWord::kForwardingAddress:
+            monitor = 5;
+            break;
+          default:
+            monitor = 42;
+        }
         uint32_t klass = *reinterpret_cast<uint32_t*>(addr);
         Thread *self = Thread::Current();
         size_t array_size = self->GetArrayAllocSize();
@@ -222,7 +244,7 @@ namespace art {
         //
         // the least two bits of klass indicates what kind of object is, and
         // if large or array object, their size will follow klass immediately.
-        // 
+        //
         if (is_large_object) {
           obj_kind = kLargeObject;
           // ALOGD("Meeting Large Object: %p   Size:%d\n", addr, static_cast<int>(size));
@@ -233,7 +255,7 @@ namespace art {
           // ALOGD("Meeting Array Object: %p  Size: %d\n", addr, (int)size);
         }
 
-        u32 data[4], count = 0;
+        u32 data[5], count = 0;
         data[count++] = reinterpret_cast<uintptr_t>(addr);
         data[count++] = reinterpret_cast<uint32_t>(self->GetAllocSite());
         if (obj_kind != kNormalObject) {
@@ -242,7 +264,7 @@ namespace art {
         } else {
           data[count++] = reinterpret_cast<uint32_t>(klass);
         }
-
+          data[count++] = reinterpret_cast<uint32_t>(monitor);
         WriteSafe(data, count * sizeof(data[0]));
         NewClass(reinterpret_cast<mirror::Class*>(klass));
       }
