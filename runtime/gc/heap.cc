@@ -2337,6 +2337,14 @@ void Heap::MarkAllocStack(accounting::ContinuousSpaceBitmap* bitmap1,
         DCHECK(large_objects != nullptr);
         large_objects->Set(obj);
       }
+      // *waanan*
+      // mirror::Object* objx = const_cast<mirror::Object*>(obj);
+      // if (leaktracer::gLeakTracerIsTracking && objx->isLTAccessed()) {
+      //   leaktracer::LeakTracer *instance = leaktracer::LeakTracer::Instance();
+      //   // obj->SetClass(leaktracer::ClearAccessBit<mirror::Class>(obj->GetClass()));
+      //   instance->AccessObject(objx);
+      // }
+      // <<
     }
   }
 }

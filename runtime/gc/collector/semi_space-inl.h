@@ -64,6 +64,13 @@ inline void SemiSpace::MarkObject(
     mirror::Object* forward_address = GetForwardingAddressInFromSpace(obj);
     // If the object has already been moved, return the new forward address.
     if (UNLIKELY(forward_address == nullptr)) {
+      // *waanan*
+      // if (leaktracer::gLeakTracerIsTracking && obj->isLTAccessed()) {
+      // leaktracer::LeakTracer *instance = leaktracer::LeakTracer::Instance();
+        // obj->SetClass(leaktracer::ClearAccessBit<mirror::Class>(obj->GetClass()));
+      // instance->AccessObject(obj);
+      // }
+      // <<
       forward_address = MarkNonForwardedObject(obj);
       DCHECK(forward_address != nullptr);
       // Make sure to only update the forwarding address AFTER you copy the object so that the
@@ -78,6 +85,13 @@ inline void SemiSpace::MarkObject(
     BitmapSetSlowPathVisitor visitor(this);
     if (!mark_bitmap_->Set(obj, visitor)) {
       // This object was not previously marked.
+      // *waanan*
+      // if (leaktracer::gLeakTracerIsTracking && obj->isLTAccessed()) {
+      // leaktracer::LeakTracer *instance = leaktracer::LeakTracer::Instance();
+        // obj->SetClass(leaktracer::ClearAccessBit<mirror::Class>(obj->GetClass()));
+      // instance->AccessObject(obj);
+      // }
+      // <<
       MarkStackPush(obj);
     }
   }

@@ -210,8 +210,8 @@ namespace art {
 
     void LeakTracer::NewObject(void *addr, size_t size) {
       if (gLeakTracerIsTracking && !gLogOnly) {
-        mirror::Object* obj = reinterpret_cast<mirror::Object*>(addr);
-        const uint32_t monitor = obj->GetM();
+        // mirror::Object* obj = reinterpret_cast<mirror::Object*>(addr);
+        // const uint32_t monitor = obj->GetM();
         // ReaderMutexLock mu(Thread::Current(), *Locks::mutator_lock_);
         // switch (obj->GetLockWord(false).GetState())
 
@@ -238,7 +238,7 @@ namespace art {
           // ALOGD("Meeting Array Object: %p  Size: %d\n", addr, (int)size);
         }
 
-        u32 data[5], count = 0;
+        u32 data[4], count = 0;
         data[count++] = reinterpret_cast<uintptr_t>(addr);
         data[count++] = reinterpret_cast<uint32_t>(self->GetAllocSite());
         if (obj_kind != kNormalObject) {
@@ -247,7 +247,6 @@ namespace art {
         } else {
           data[count++] = reinterpret_cast<uint32_t>(klass);
         }
-          data[count++] = reinterpret_cast<uint32_t>(monitor);
         WriteSafe(data, count * sizeof(data[0]));
         NewClass(reinterpret_cast<mirror::Class*>(klass));
       }

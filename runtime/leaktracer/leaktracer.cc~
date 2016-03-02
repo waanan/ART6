@@ -211,27 +211,10 @@ namespace art {
     void LeakTracer::NewObject(void *addr, size_t size) {
       if (gLeakTracerIsTracking && !gLogOnly) {
         mirror::Object* obj = reinterpret_cast<mirror::Object*>(addr);
-        uint32_t monitor;
-        ReaderMutexLock mu(Thread::Current(), *Locks::mutator_lock_);
-        switch (obj->GetLockWord(false).GetState()) {
-          case LockWord::kUnlocked:
-            monitor = 0;
-            break;
-          case LockWord::kThinLocked:
-            monitor = 1;
-	    break;
-          case LockWord::kFatLocked:
-            monitor = 2;
-            break;    
-          case LockWord::kHashCode:
-            monitor = 3;
-            break;
-	  case LockWord::kForwardingAddress:
-            monitor = 5;
-            break;
-          default:
-            monitor = 42;
-        }
+        const uint32_t monitor = obj->GetM();
+        // ReaderMutexLock mu(Thread::Current(), *Locks::mutator_lock_);
+        // switch (obj->GetLockWord(false).GetState())
+
         uint32_t klass = *reinterpret_cast<uint32_t*>(addr);
         Thread *self = Thread::Current();
         size_t array_size = self->GetArrayAllocSize();

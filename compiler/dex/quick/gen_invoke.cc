@@ -979,6 +979,12 @@ bool Mir2Lir::GenInlinedReferenceGetReferent(CallInfo* info) {
   RegLocation rl_dest = InlineTarget(info);
   RegLocation rl_result = EvalLoc(rl_dest, kRefReg, true);
   GenNullCheck(rl_obj.reg, info->opt_flags);
+
+  // *waanan*
+  // Gen access bit for inlined method
+  // GenSetAccessBit(rl_obj.reg, true);
+  // <<
+
   LoadRefDisp(rl_obj.reg, mirror::Reference::ReferentOffset().Int32Value(), rl_result.reg,
               kNotVolatile);
   MarkPossibleNullPointerException(info->opt_flags);
@@ -1002,6 +1008,12 @@ bool Mir2Lir::GenInlinedCharAt(CallInfo* info) {
   rl_idx = LoadValue(rl_idx, kCoreReg);
   RegStorage reg_max;
   GenNullCheck(rl_obj.reg, info->opt_flags);
+
+  // *waanan*
+  // Gen access bit for inlined method
+  // GenSetAccessBit(rl_obj.reg, true);
+  // <<
+
   bool range_check = (!(info->opt_flags & MIR_IGNORE_RANGE_CHECK));
   LIR* range_check_branch = nullptr;
   if (range_check) {
@@ -1094,6 +1106,12 @@ bool Mir2Lir::GenInlinedStringIsEmptyOrLength(CallInfo* info, bool is_empty) {
   RegLocation rl_dest = InlineTarget(info);
   RegLocation rl_result = EvalLoc(rl_dest, kCoreReg, true);
   GenNullCheck(rl_obj.reg, info->opt_flags);
+
+  // *waanan*
+  // Gen access bit for inlined method
+  // GenSetAccessBit(rl_obj.reg, true);
+  // <<
+
   Load32Disp(rl_obj.reg, mirror::String::CountOffset().Int32Value(), rl_result.reg);
   MarkPossibleNullPointerException(info->opt_flags);
   if (is_empty) {
@@ -1350,6 +1368,11 @@ bool Mir2Lir::GenInlinedIndexOf(CallInfo* info, bool zero_based) {
     return false;
   }
 
+  // *waanan*
+  // RegLocation this_object = LoadValue(rl_obj, kRefReg);
+  // GenSetAccessBit(this_object.reg, true);
+  // <<
+
   ClobberCallerSave();
   LockCallTemps();  // Using fixed registers
   RegStorage reg_ptr = TargetReg(kArg0, kRef);
@@ -1455,6 +1478,12 @@ bool Mir2Lir::GenInlinedUnsafeGet(CallInfo* info,
   RegLocation rl_dest = is_long ? InlineTargetWide(info) : InlineTarget(info);  // result reg
 
   RegLocation rl_object = LoadValue(rl_src_obj, kRefReg);
+
+  // *waanan*
+  // Gen access bit for inlined method
+  // GenSetAccessBit(rl_object.reg, true);
+  // <<
+
   RegLocation rl_offset = LoadValue(rl_src_offset, kCoreReg);
   RegLocation rl_result = EvalLoc(rl_dest, is_object ? kRefReg : kCoreReg, true);
   if (is_long) {
@@ -1502,6 +1531,10 @@ bool Mir2Lir::GenInlinedUnsafePut(CallInfo* info, bool is_long,
     GenMemBarrier(kAnyStore);
   }
   RegLocation rl_object = LoadValue(rl_src_obj, kRefReg);
+  // *waanan*
+  // Gen access bit for inlined method
+  // GenSetAccessBit(rl_object.reg, true);
+  // <<
   RegLocation rl_offset = LoadValue(rl_src_offset, kCoreReg);
   RegLocation rl_value;
   if (is_long) {
@@ -1555,6 +1588,7 @@ void Mir2Lir::GenInvokeNoInline(CallInfo* info) {
   LIR* null_ck;
   LIR** p_null_ck = nullptr;
   NextCallInsn next_call_insn;
+
   FlushAllRegs();  /* Everything to home location */
   // Explicit register usage
   LockCallTemps();
@@ -1600,6 +1634,14 @@ void Mir2Lir::GenInvokeNoInline(CallInfo* info) {
     next_call_insn = fast_path ? NextVCallInsn : NextVCallInsnSP;
     skip_this = fast_path;
   }
+
+  // *waanan*
+  // if (!skip_this) {
+  // RegLocation this_object = LoadValue(info->args[0], kRefReg);
+  // GenSetAccessBit(this_object.reg, true);
+  // }
+  // <<
+
   call_state = GenDalvikArgs(info, call_state, p_null_ck,
                              next_call_insn, target_method, method_info.VTableIndex(),
                              method_info.DirectCode(), method_info.DirectMethod(),
