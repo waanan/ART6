@@ -495,7 +495,7 @@ inline void MarkSweep::PushOnMarkStack(Object* obj) {
   // The object must be pushed on to the mark stack.
   mark_stack_->PushBack(obj);
 
-  // *waanan*
+  // *waanan
   if (leaktracer::gLeakTracerIsTracking && obj->isLTAccessed()) {
     leaktracer::LeakTracer *instance = leaktracer::LeakTracer::Instance();
     // obj->SetClass(leaktracer::ClearAccessBit<mirror::Class>(obj->GetClass()));

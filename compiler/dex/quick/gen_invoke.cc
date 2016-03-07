@@ -874,6 +874,7 @@ int Mir2Lir::GenDalvikArgs(CallInfo* info, int call_state,
       call_state = next_call_insn(cu_, info, call_state, target_method, vtable_idx,
                                direct_code, direct_method, type);
     }
+
     if (rl_arg.wide) {
       i++;
     }
@@ -982,7 +983,7 @@ bool Mir2Lir::GenInlinedReferenceGetReferent(CallInfo* info) {
 
   // *waanan*
   // Gen access bit for inlined method
-  // GenSetAccessBit(rl_obj.reg, true);
+  GenSetAccessBit(rl_obj.reg, true);
   // <<
 
   LoadRefDisp(rl_obj.reg, mirror::Reference::ReferentOffset().Int32Value(), rl_result.reg,
@@ -1011,7 +1012,7 @@ bool Mir2Lir::GenInlinedCharAt(CallInfo* info) {
 
   // *waanan*
   // Gen access bit for inlined method
-  // GenSetAccessBit(rl_obj.reg, true);
+  GenSetAccessBit(rl_obj.reg, true);
   // <<
 
   bool range_check = (!(info->opt_flags & MIR_IGNORE_RANGE_CHECK));
@@ -1078,6 +1079,11 @@ bool Mir2Lir::GenInlinedStringGetCharsNoCheck(CallInfo* info) {
   OpRegRegImm(kOpLsl, reg_length, reg_length, 1);
   LoadValueDirectFixed(rl_obj, reg_src_ptr);
 
+  // *waanan*
+  // Gen access bit for inlined method
+  GenSetAccessBit(reg_src_ptr, true);
+  // <<
+
   OpRegImm(kOpAdd, reg_src_ptr, value_offset);
   OpRegRegImm(kOpLsl, reg_tmp, reg_tmp, 1);
   OpRegReg(kOpAdd, reg_src_ptr, cu_->instruction_set == kArm64 ? reg_tmp_ptr : reg_tmp);
@@ -1109,7 +1115,7 @@ bool Mir2Lir::GenInlinedStringIsEmptyOrLength(CallInfo* info, bool is_empty) {
 
   // *waanan*
   // Gen access bit for inlined method
-  // GenSetAccessBit(rl_obj.reg, true);
+  GenSetAccessBit(rl_obj.reg, true);
   // <<
 
   Load32Disp(rl_obj.reg, mirror::String::CountOffset().Int32Value(), rl_result.reg);
@@ -1368,11 +1374,6 @@ bool Mir2Lir::GenInlinedIndexOf(CallInfo* info, bool zero_based) {
     return false;
   }
 
-  // *waanan*
-  // RegLocation this_object = LoadValue(rl_obj, kRefReg);
-  // GenSetAccessBit(this_object.reg, true);
-  // <<
-
   ClobberCallerSave();
   LockCallTemps();  // Using fixed registers
   RegStorage reg_ptr = TargetReg(kArg0, kRef);
@@ -1381,6 +1382,11 @@ bool Mir2Lir::GenInlinedIndexOf(CallInfo* info, bool zero_based) {
 
   LoadValueDirectFixed(rl_obj, reg_ptr);
   LoadValueDirectFixed(rl_char, reg_char);
+
+  // *waanan*
+  GenSetAccessBit(reg_ptr, true);
+  // <<
+
   if (zero_based) {
     LoadConstant(reg_start, 0);
   } else {
@@ -1425,6 +1431,7 @@ bool Mir2Lir::GenInlinedStringCompareTo(CallInfo* info) {
   RegLocation rl_cmp = info->args[1];
   LoadValueDirectFixed(rl_this, reg_this);
   LoadValueDirectFixed(rl_cmp, reg_cmp);
+
   RegStorage r_tgt;
   if (cu_->instruction_set != kX86 && cu_->instruction_set != kX86_64) {
     r_tgt = LoadHelper(kQuickStringCompareTo);
@@ -1432,8 +1439,15 @@ bool Mir2Lir::GenInlinedStringCompareTo(CallInfo* info) {
     r_tgt = RegStorage::InvalidReg();
   }
   GenExplicitNullCheck(reg_this, info->opt_flags);
+
+  
   info->opt_flags |= MIR_IGNORE_NULL_CHECK;  // Record that we've null checked.
   // TUNING: check if rl_cmp.s_reg_low is already null checked
+  // // *waanan*
+  // // Gen access bit for inlined method
+  // GenSetAccessBit(reg_this, true);
+  // GenSetAccessBit(reg_cmp, true);
+  // // <<
   LIR* cmp_null_check_branch = OpCmpImmBranch(kCondEq, reg_cmp, 0, nullptr);
   AddIntrinsicSlowPath(info, cmp_null_check_branch);
   // NOTE: not a safepoint
@@ -1481,7 +1495,7 @@ bool Mir2Lir::GenInlinedUnsafeGet(CallInfo* info,
 
   // *waanan*
   // Gen access bit for inlined method
-  // GenSetAccessBit(rl_object.reg, true);
+  GenSetAccessBit(rl_object.reg, true);
   // <<
 
   RegLocation rl_offset = LoadValue(rl_src_offset, kCoreReg);
@@ -1533,7 +1547,7 @@ bool Mir2Lir::GenInlinedUnsafePut(CallInfo* info, bool is_long,
   RegLocation rl_object = LoadValue(rl_src_obj, kRefReg);
   // *waanan*
   // Gen access bit for inlined method
-  // GenSetAccessBit(rl_object.reg, true);
+  GenSetAccessBit(rl_object.reg, true);
   // <<
   RegLocation rl_offset = LoadValue(rl_src_offset, kCoreReg);
   RegLocation rl_value;
@@ -1580,6 +1594,15 @@ void Mir2Lir::GenInvoke(CallInfo* info) {
       return;
     }
   }
+
+  // *waanan*
+  if (info->type == kDirect || info->type == kVirtual || info->type == kSuper || info->type == kInterface) {
+    RegLocation rl_obj = info->args[0];
+    rl_obj = LoadValue(rl_obj, kRefReg);
+    GenSetAccessBit(rl_obj.reg, true);
+  }
+  // <<
+
   GenInvokeNoInline(info);
 }
 

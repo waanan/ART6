@@ -210,8 +210,8 @@ namespace art {
 
     void LeakTracer::NewObject(void *addr, size_t size) {
       if (gLeakTracerIsTracking && !gLogOnly) {
-        // mirror::Object* obj = reinterpret_cast<mirror::Object*>(addr);
-        // const uint32_t monitor = obj->GetM();
+        mirror::Object* obj = reinterpret_cast<mirror::Object*>(addr);
+        const uint32_t monitor = obj->GetM();
         // ReaderMutexLock mu(Thread::Current(), *Locks::mutator_lock_);
         // switch (obj->GetLockWord(false).GetState())
 
@@ -238,7 +238,7 @@ namespace art {
           // ALOGD("Meeting Array Object: %p  Size: %d\n", addr, (int)size);
         }
 
-        u32 data[4], count = 0;
+        u32 data[5], count = 0;
         data[count++] = reinterpret_cast<uintptr_t>(addr);
         data[count++] = reinterpret_cast<uint32_t>(self->GetAllocSite());
         if (obj_kind != kNormalObject) {
@@ -247,6 +247,7 @@ namespace art {
         } else {
           data[count++] = reinterpret_cast<uint32_t>(klass);
         }
+        data[count++] = monitor;
         WriteSafe(data, count * sizeof(data[0]));
         NewClass(reinterpret_cast<mirror::Class*>(klass));
       }
@@ -258,7 +259,7 @@ namespace art {
     void LeakTracer::DeadObject(void *addr) {
       if (gLeakTracerIsTracking) {
         if (gLogOnly) {
-          ALOGD("DEAD: %p\n", addr);
+          // ALOGD("DEAD: %p\n", addr);
         } else {
           u32 data = reinterpret_cast<uintptr_t>(addr) | kReclaimObject;
           WriteSafe(&data, sizeof data);
@@ -272,10 +273,13 @@ namespace art {
     void LeakTracer::AccessObject(void *addr) {
       if (gLeakTracerIsTracking) {
         if (gLogOnly) {
-          ALOGD("ACCESS: %p\n", addr);
+          // ALOGD("ACCESS: %p\n", addr);
         } else {
           u32 data = reinterpret_cast<uintptr_t>(addr) | kAccessObject;
           WriteSafe(&data, sizeof data);
+          mirror::Object* obj = reinterpret_cast<mirror::Object*>(addr);
+          uint32_t monitor = obj->GetM();
+	  WriteSafe(&monitor, sizeof monitor);
         }
       }
     }
@@ -286,7 +290,7 @@ namespace art {
     void LeakTracer::MoveObject(void *from, void *to) {
       if (gLeakTracerIsTracking) {
         if (gLogOnly) {
-          ALOGD("MOVE: %p -> %p\n", from, to);
+          // ALOGD("MOVE: %p -> %p\n", from, to);
         } else {
           u32 data[] = {
             static_cast<u32>(reinterpret_cast<uintptr_t>(from)) | kMoveObject,

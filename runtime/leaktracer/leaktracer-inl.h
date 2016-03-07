@@ -17,6 +17,8 @@ namespace art {
     const uint32_t kAccessMask = 0xC0000000;
     const uint32_t kHashMask = 0x7FFFFFF;
     const uint32_t kAccessBit = 0x8000000;
+    const uint32_t kAccessThin = 0x00000000;
+    const uint32_t kAccessFat = 0x40000000;
     const uint32_t kAccessHash = 0x80000000;
 
     // template <typename T>

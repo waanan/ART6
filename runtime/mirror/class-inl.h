@@ -43,7 +43,7 @@ inline uint32_t Class::GetObjectSize() {
   // >> *waanan*
   // we don't check here, since we want object size whether it's array or abstract
   // Note: Extra parentheses to avoid the comma being interpreted as macro parameter separator.
-  DCHECK((!IsVariableSize<kVerifyFlags, kReadBarrierOption>())) << " class=" << PrettyTypeOf(this); 
+  DCHECK((!IsVariableSize<kVerifyFlags, kReadBarrierOption>())) << " class=" << PrettyTypeOf(this);
   // <<
   return GetField32(ObjectSizeOffset());
 }

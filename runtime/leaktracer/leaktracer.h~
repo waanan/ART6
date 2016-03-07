@@ -26,6 +26,8 @@ namespace art {
     class Class;
   }
 
+    class ArtMethod;
+
   namespace leaktracer {
     // const int KB = 1024;
     // const int kTLSBufferSize = 16*KB;
@@ -43,7 +45,6 @@ namespace art {
     // inline void InitBuffer(Buffer *p) {
     //   p->count = 0;
     // }
-    class ArtMethod;
 
     extern bool gLeakTracerIsTracking;
 
@@ -70,7 +71,7 @@ namespace art {
       void AppFinished();
 
       void NewClass(mirror::Class *klass);
-      void NewMethodLinked(const std::string& class_name, ArtMethod *method);
+      void NewMethodLinked(const std::string& class_name, ArtMethod& method);
 
     private:
       // returns 0 on success, errno on failure

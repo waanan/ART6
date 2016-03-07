@@ -247,7 +247,7 @@ namespace art {
         } else {
           data[count++] = reinterpret_cast<uint32_t>(klass);
         }
-          data[count++] = reinterpret_cast<uint32_t>(monitor);
+        data[count++] = monitor;
         WriteSafe(data, count * sizeof(data[0]));
         NewClass(reinterpret_cast<mirror::Class*>(klass));
       }
@@ -277,6 +277,9 @@ namespace art {
         } else {
           u32 data = reinterpret_cast<uintptr_t>(addr) | kAccessObject;
           WriteSafe(&data, sizeof data);
+          mirror::Object* obj = reinterpret_cast<mirror::Object*>(addr);
+          uint32_t monitor = obj->GetM();
+	  WriteSafe(&monitor, sizeof monitor);
         }
       }
     }

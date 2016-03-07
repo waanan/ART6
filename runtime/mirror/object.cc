@@ -209,26 +209,19 @@ int32_t Object::IdentityHashCode() const {
   // *waanan*
   // return if object is accessed and clear AccessBit
 bool Object::isLTAccessed() {
-  ReaderMutexLock mu(Thread::Current(), *Locks::mutator_lock_);
-  LockWord lw = this->GetLockWord(false);
-  switch (lw.GetState()) {
-    case LockWord::kUnlocked: {
-      return false;
-    }
-    case LockWord::kThinLocked: {
+  if (monitor_ == 0) {
+    return false;
+  } else {
+    uint32_t type = monitor_ & leaktracer::kAccessMask;
+    if (type == leaktracer::kAccessThin || type == leaktracer::kAccessFat) {
       return true;
-    }
-    case LockWord::kFatLocked: {
-      return true;
-    }
-    case LockWord::kHashCode: {
+    } else if (type == leaktracer::kAccessHash) {
       bool result = monitor_ & leaktracer::kAccessBit;
-      if(result) {
-        monitor_ &= ~leaktracer::kAccessBit; 
+      if (result) {
+        monitor_ &= ~leaktracer::kAccessBit;
       }
       return result;
-    }
-    default: {
+    } else {
       return false;
     }
   }

@@ -14,16 +14,17 @@
 namespace art {
   namespace leaktracer {
 
-    const uint32_t KAccessMask = 0xC0000000;
+    const uint32_t kAccessMask = 0xC0000000;
+    const uint32_t kHashMask = 0x7FFFFFF;
     const uint32_t kAccessBit = 0x8000000;
     const uint32_t kAccessHash = 0x80000000;
 
-    template <typename T>
-    inline T* ClearAccessBit(T *klass) {
-      uintptr_t raw = reinterpret_cast<uintptr_t>(klass);
-      raw &= ~kAccessBit;
-      return reinterpret_cast<T*>(raw);
-    }
+    // template <typename T>
+    // inline T* ClearAccessBit(T *klass) {
+    //   uintptr_t raw = reinterpret_cast<uintptr_t>(klass);
+    //   raw &= ~kAccessBit;
+    //   return reinterpret_cast<T*>(raw);
+    // }
 
     // inline void SetAccessBit(void *obj) {
     //   uintptr_t *rawp = static_cast<uintptr_t*>(obj);
@@ -31,11 +32,11 @@ namespace art {
     // }
 
 
-    inline bool Accessed(void *obj) {
-      // get klass_ pointer of obj
-      uintptr_t raw = *static_cast<uintptr_t*>(obj);
-      return raw & kAccessBit;
-    }
+    // inline bool Accessed(void *obj) {
+    //   // get klass_ pointer of obj
+    //   uintptr_t raw = *static_cast<uintptr_t*>(obj);
+    //   return raw & kAccessBit;
+    // }
 
 }  // namespace leaktracer
 }  // namespace art
