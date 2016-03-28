@@ -1374,6 +1374,9 @@ void ArmMir2Lir::GenArithOpLong(Instruction::Code opcode, RegLocation rl_dest, R
  */
 void ArmMir2Lir::GenArrayGet(int opt_flags, OpSize size, RegLocation rl_array,
                              RegLocation rl_index, RegLocation rl_dest, int scale) {
+  // *waanan*
+  GenSetAccessBit(rl_array, true);
+  // <<
   RegisterClass reg_class = RegClassBySize(size);
   int len_offset = mirror::Array::LengthOffset().Int32Value();
   int data_offset;
@@ -1397,10 +1400,6 @@ void ArmMir2Lir::GenArrayGet(int opt_flags, OpSize size, RegLocation rl_array,
 
   /* null object? */
   GenNullCheck(rl_array.reg, opt_flags);
-
-  // *waanan*
-  GenSetAccessBit(rl_array.reg, true);
-  // <<
 
   bool needs_range_check = (!(opt_flags & MIR_IGNORE_RANGE_CHECK));
   RegStorage reg_len;
@@ -1464,6 +1463,9 @@ void ArmMir2Lir::GenArrayGet(int opt_flags, OpSize size, RegLocation rl_array,
  */
 void ArmMir2Lir::GenArrayPut(int opt_flags, OpSize size, RegLocation rl_array,
                              RegLocation rl_index, RegLocation rl_src, int scale, bool card_mark) {
+  // *waanan*
+  GenSetAccessBit(rl_array, true);
+  // <<
   RegisterClass reg_class = RegClassBySize(size);
   int len_offset = mirror::Array::LengthOffset().Int32Value();
   bool constant_index = rl_index.is_const;
@@ -1499,10 +1501,6 @@ void ArmMir2Lir::GenArrayPut(int opt_flags, OpSize size, RegLocation rl_array,
 
   /* null object? */
   GenNullCheck(rl_array.reg, opt_flags);
-
-  // *waanan*
-  GenSetAccessBit(rl_array.reg, true);
-  // <<
 
   bool needs_range_check = (!(opt_flags & MIR_IGNORE_RANGE_CHECK));
   RegStorage reg_len;

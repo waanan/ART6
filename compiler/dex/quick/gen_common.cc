@@ -730,9 +730,6 @@ void Mir2Lir::GenSput(MIR* mir, RegLocation rl_src, OpSize size) {
     }
     if (IsRef(size) && !mir_graph_->IsConstantNullRef(rl_src)) {
       MarkGCCard(mir->optimization_flags, rl_src.reg, r_base);
-      // *waanan*
-      GenSetAccessBit(rl_src.reg, true);
-      // <<
     }
     FreeTemp(r_base);
   } else {
@@ -800,9 +797,6 @@ void Mir2Lir::GenSget(MIR* mir, RegLocation rl_dest, OpSize size, Primitive::Typ
       // TODO: DCHECK?
       LoadRefDisp(r_base, field_offset, rl_result.reg, field_info.IsVolatile() ? kVolatile :
           kNotVolatile);
-      // *waanan*
-      GenSetAccessBit(rl_result.reg, true);
-      // <<
     } else {
       LoadBaseDisp(r_base, field_offset, rl_result.reg, size, field_info.IsVolatile() ?
           kVolatile : kNotVolatile);
@@ -872,6 +866,11 @@ void Mir2Lir::HandleSlowPaths() {
 
 void Mir2Lir::GenIGet(MIR* mir, int opt_flags, OpSize size, Primitive::Type type,
                       RegLocation rl_dest, RegLocation rl_obj) {
+  // *waanan*
+  // slow path field get operation will be handled by our c code
+  // in quick_field_entrypoints.cc
+  GenSetAccessBit(rl_obj, true);
+  // <<
   const MirIFieldLoweringInfo& field_info = mir_graph_->GetIFieldLoweringInfo(mir);
   if (kIsDebugBuild) {
     auto mem_access_type = IsInstructionIGetQuickOrIPutQuick(mir->dalvikInsn.opcode) ?
@@ -886,11 +885,6 @@ void Mir2Lir::GenIGet(MIR* mir, int opt_flags, OpSize size, Primitive::Type type
     DCHECK_GE(field_info.FieldOffset().Int32Value(), 0);
     rl_obj = LoadValue(rl_obj, kRefReg);
     GenNullCheck(rl_obj.reg, opt_flags);
-    // *waanan*
-    // slow path field get operation will be handled by our c code
-    // in quick_field_entrypoints.cc
-    GenSetAccessBit(rl_obj.reg, true);
-    // <<
     RegLocation rl_result = EvalLoc(rl_dest, reg_class, true);
     int field_offset = field_info.FieldOffset().Int32Value();
     LIR* load_lir;
@@ -960,6 +954,11 @@ void Mir2Lir::GenIGet(MIR* mir, int opt_flags, OpSize size, Primitive::Type type
 
 void Mir2Lir::GenIPut(MIR* mir, int opt_flags, OpSize size,
                       RegLocation rl_src, RegLocation rl_obj) {
+  // *waanan*
+  // slow path field put operation will be handled by our c code
+  // in quick_field_entrypoints.cc
+  GenSetAccessBit(rl_obj, true);
+  // <<
   const MirIFieldLoweringInfo& field_info = mir_graph_->GetIFieldLoweringInfo(mir);
   if (kIsDebugBuild) {
     auto mem_access_type = IsInstructionIGetQuickOrIPutQuick(mir->dalvikInsn.opcode) ?
@@ -980,11 +979,6 @@ void Mir2Lir::GenIPut(MIR* mir, int opt_flags, OpSize size,
       rl_src = LoadValue(rl_src, reg_class);
     }
     GenNullCheck(rl_obj.reg, opt_flags);
-    // *waanan*
-    // slow path field put operation will be handled by our c code
-    // in quick_field_entrypoints.cc
-    GenSetAccessBit(rl_obj.reg, true);
-    // <<
     int field_offset = field_info.FieldOffset().Int32Value();
     LIR* null_ck_insn;
     if (IsRef(size)) {
@@ -1216,11 +1210,6 @@ void Mir2Lir::GenInstanceofFinal(bool use_declaring_class, uint32_t type_idx, Re
     LoadRefDisp(check_class, offset_of_type, check_class, kNotVolatile);
   }
 
-  // *waanan*
-  GenSetAccessBit(object.reg, true);
-  // GenClearAccessBit(object_class, true);
-  // <<
-
   // FIXME: what should we be comparing here? compressed or decompressed references?
   if (cu_->instruction_set == kThumb2) {
     OpRegReg(kOpCmp, check_class, object_class);  // Same?
@@ -1301,10 +1290,6 @@ void Mir2Lir::GenInstanceofCallingHelper(bool needs_access_check, bool type_know
   LoadRefDisp(ref_reg, mirror::Object::ClassOffset().Int32Value(),
               ref_class_reg, kNotVolatile);
   /* kArg0 is ref, kArg1 is ref->klass_, kArg2 is class */
-  // *waanan*
-  GenSetAccessBit(ref_reg, true);
-  // GenClearAccessBit(class_reg, false);
-  // <<
   LIR* branchover = nullptr;
   if (type_known_final) {
     // rl_result == ref == class.
@@ -1463,11 +1448,6 @@ void Mir2Lir::GenCheckCast(int opt_flags, uint32_t insn_idx, uint32_t type_idx,
     DCHECK_EQ(mirror::Object::ClassOffset().Int32Value(), 0);
     LoadRefDisp(TargetReg(kArg0, kRef), mirror::Object::ClassOffset().Int32Value(),
                 TargetReg(kArg1, kRef), kNotVolatile);
-
-    // *waanan*
-    GenSetAccessBit(TargetReg(kArg0, kRef), true);   // mark object accessed
-    // GenClearAccessBit(TargetReg(kArg1, kRef), true);  // make klass pointer clean
-    // <<
 
     LIR* branch2 = OpCmpBranch(kCondNe, TargetReg(kArg1, kRef), class_reg, nullptr);
     LIR* cont = NewLIR0(kPseudoTargetLabel);

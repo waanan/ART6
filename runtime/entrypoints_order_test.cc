@@ -311,8 +311,13 @@ class EntrypointsOrderTest : public CommonRuntimeTest {
     EXPECT_OFFSET_DIFFNP(QuickEntryPoints, pNewStringFromStringBuilder, pReadBarrierJni,
                          sizeof(void*));
 
+    // *waanan*
+    // EXPECT_OFFSET_DIFFNP(QuickEntryPoints, pReadBarrierJni, pLtAccessObj,sizeof(void*));
+
+    // CHECKED(OFFSETOF_MEMBER(QuickEntryPoints, pLtAccessObj) + sizeof(void*) == sizeof(QuickEntryPoints), QuickEntryPoints_all);
+
     CHECKED(OFFSETOF_MEMBER(QuickEntryPoints, pReadBarrierJni)
-            + sizeof(void*) == sizeof(QuickEntryPoints), QuickEntryPoints_all);
+             + sizeof(void*) == sizeof(QuickEntryPoints), QuickEntryPoints_all);
   }
 };
 

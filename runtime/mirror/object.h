@@ -450,12 +450,14 @@ class MANAGED LOCKABLE Object {
   // Generate an identity hash code. Public for object test.
   static uint32_t GenerateIdentityHashCode();
 
+  // *waanan*
   // Used for access action test.
-  uint32_t GetM() {
-    return monitor_;
-  }
+  // uint32_t GetM() {
+  // return monitor_;
+  // }
+  // bool isLTAccessed();
+  // <<
 
-  bool isLTAccessed();
 
  protected:
   // Accessors for non-Java type fields

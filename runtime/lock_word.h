@@ -24,6 +24,10 @@
 #include "base/logging.h"
 #include "read_barrier.h"
 
+// >> *waanan*
+// #include "leaktracer/leaktracer-inl.h"
+// <<
+
 namespace art {
 namespace mirror {
   class Object;
@@ -153,8 +157,14 @@ class LockWord {
 
   LockState GetState() const {
     CheckReadBarrierState();
+    // *waanan*
     if ((!kUseReadBarrier && UNLIKELY(value_ == 0)) ||
-        (kUseReadBarrier && UNLIKELY((value_ & kReadBarrierStateMaskShiftedToggled) == 0))) {
+       (kUseReadBarrier && UNLIKELY((value_ & kReadBarrierStateMaskShiftedToggled) == 0))) {
+    /* if ((!kUseReadBarrier && UNLIKELY(value_ == 0 || value_ == leaktracer::kAccessBit)) || */
+    /*     (kUseReadBarrier && UNLIKELY((value_ & kReadBarrierStateMaskShiftedToggled) == 0 || */
+    /* 				     (value_ & kReadBarrierStateMaskShiftedToggled) == leaktracer::kAccessBit))) { */
+   
+    //
       return kUnlocked;
     } else {
       uint32_t internal_state = (value_ >> kStateShift) & kStateMask;
@@ -241,12 +251,18 @@ class LockWord {
   // not work. Prefer Equal() or GetValueWithoutReadBarrierState().
   uint32_t GetValue() const {
     CheckReadBarrierState();
-    return value_;
+    // *waanan*
+    return value_ ;
+    // return value_ & ~leaktracer::kAccessBit;
+    // <<
   }
 
   uint32_t GetValueWithoutReadBarrierState() const {
     CheckReadBarrierState();
+    // *waanan*
     return value_ & ~(kReadBarrierStateMask << kReadBarrierStateShift);
+    // return value_ & ~(kReadBarrierStateMask << kReadBarrierStateShift) & ~leaktracer::kAccessBit;
+    // <<
   }
 
   // Only Object should be converting LockWords to/from uints.

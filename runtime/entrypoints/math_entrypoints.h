@@ -25,5 +25,7 @@ extern "C" int64_t art_d2l(double d);
 extern "C" int32_t art_d2i(double d);
 extern "C" int64_t art_f2l(float f);
 extern "C" int32_t art_f2i(float f);
+// *waanan* acc obj entrypoint
+extern "C" void art_lt_acc_obj(void* obj); 
 
 #endif  // ART_RUNTIME_ENTRYPOINTS_MATH_ENTRYPOINTS_H_

@@ -11,10 +11,12 @@
 #ifndef ART_RUNTIME_LEAKTRACER_LEAKTRACER_H_
 #define ART_RUNTIME_LEAKTRACER_LEAKTRACER_H_
 
+#include "ac_defs.h"
 #include <stdio.h>
 #include <string>
 #include <vector>
 #include <set>
+#include <unordered_set>
 #include "../base/macros.h"
 
 namespace art {
@@ -99,6 +101,7 @@ namespace art {
       FILE *class_fp_;          // class name, method name, code range should write to this file
       std::string proc_name_;
       size_t num_gc_;
+      std::unordered_set<u32> acc_objs;
       std::set<mirror::Class*> classes_;
       std::vector<ClassOrMethod> class_meta_info_;
       std::vector<ClassOrMethod> method_meta_info_;

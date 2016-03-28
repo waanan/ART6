@@ -983,7 +983,7 @@ bool Mir2Lir::GenInlinedReferenceGetReferent(CallInfo* info) {
 
   // *waanan*
   // Gen access bit for inlined method
-  GenSetAccessBit(rl_obj.reg, true);
+  // GenSetAccessBit(rl_obj.reg, true);
   // <<
 
   LoadRefDisp(rl_obj.reg, mirror::Reference::ReferentOffset().Int32Value(), rl_result.reg,
@@ -1012,7 +1012,7 @@ bool Mir2Lir::GenInlinedCharAt(CallInfo* info) {
 
   // *waanan*
   // Gen access bit for inlined method
-  GenSetAccessBit(rl_obj.reg, true);
+  // GenSetAccessBit(rl_obj.reg, true);
   // <<
 
   bool range_check = (!(info->opt_flags & MIR_IGNORE_RANGE_CHECK));
@@ -1081,7 +1081,7 @@ bool Mir2Lir::GenInlinedStringGetCharsNoCheck(CallInfo* info) {
 
   // *waanan*
   // Gen access bit for inlined method
-  GenSetAccessBit(reg_src_ptr, true);
+  // GenSetAccessBit(reg_src_ptr, true);
   // <<
 
   OpRegImm(kOpAdd, reg_src_ptr, value_offset);
@@ -1115,7 +1115,7 @@ bool Mir2Lir::GenInlinedStringIsEmptyOrLength(CallInfo* info, bool is_empty) {
 
   // *waanan*
   // Gen access bit for inlined method
-  GenSetAccessBit(rl_obj.reg, true);
+  // GenSetAccessBit(rl_obj.reg, true);
   // <<
 
   Load32Disp(rl_obj.reg, mirror::String::CountOffset().Int32Value(), rl_result.reg);
@@ -1384,7 +1384,7 @@ bool Mir2Lir::GenInlinedIndexOf(CallInfo* info, bool zero_based) {
   LoadValueDirectFixed(rl_char, reg_char);
 
   // *waanan*
-  GenSetAccessBit(reg_ptr, true);
+  // GenSetAccessBit(reg_ptr, true);
   // <<
 
   if (zero_based) {
@@ -1495,7 +1495,7 @@ bool Mir2Lir::GenInlinedUnsafeGet(CallInfo* info,
 
   // *waanan*
   // Gen access bit for inlined method
-  GenSetAccessBit(rl_object.reg, true);
+  // GenSetAccessBit(rl_object.reg, true);
   // <<
 
   RegLocation rl_offset = LoadValue(rl_src_offset, kCoreReg);
@@ -1547,7 +1547,7 @@ bool Mir2Lir::GenInlinedUnsafePut(CallInfo* info, bool is_long,
   RegLocation rl_object = LoadValue(rl_src_obj, kRefReg);
   // *waanan*
   // Gen access bit for inlined method
-  GenSetAccessBit(rl_object.reg, true);
+  // GenSetAccessBit(rl_object.reg, true);
   // <<
   RegLocation rl_offset = LoadValue(rl_src_offset, kCoreReg);
   RegLocation rl_value;
@@ -1586,6 +1586,13 @@ bool Mir2Lir::GenInlinedUnsafePut(CallInfo* info, bool is_long,
 }
 
 void Mir2Lir::GenInvoke(CallInfo* info) {
+
+  // *waanan*
+  if (info->type == kDirect || info->type == kVirtual || info->type == kSuper || info->type == kInterface) {
+     GenSetAccessBit(info->args[0], true);
+   }
+  // <<
+
   DCHECK(cu_->compiler_driver->GetMethodInlinerMap() != nullptr);
   if (mir_graph_->GetMethodLoweringInfo(info->mir).IsIntrinsic()) {
     const DexFile* dex_file = info->method_ref.dex_file;
@@ -1594,14 +1601,6 @@ void Mir2Lir::GenInvoke(CallInfo* info) {
       return;
     }
   }
-
-  // *waanan*
-  if (info->type == kDirect || info->type == kVirtual || info->type == kSuper || info->type == kInterface) {
-    RegLocation rl_obj = info->args[0];
-    rl_obj = LoadValue(rl_obj, kRefReg);
-    GenSetAccessBit(rl_obj.reg, true);
-  }
-  // <<
 
   GenInvokeNoInline(info);
 }

@@ -37,7 +37,7 @@
 #include "well_known_classes.h"
 
 // >> *waanan*
-#include "leaktracer/leaktracer-inl.h"
+// #include "leaktracer/leaktracer-inl.h"
 // <<
 
 
@@ -148,9 +148,9 @@ uint32_t Object::GenerateIdentityHashCode() {
     new_value = expected_value * 1103515245 + 12345;
   } while (!hash_code_seed.CompareExchangeWeakRelaxed(expected_value, new_value) ||
       (expected_value & LockWord::kHashMask) == 0);
-  // return expected_value & LockWord::kHashMask;
+  return expected_value & LockWord::kHashMask;
   // *waanan*
-  return expected_value & leaktracer::kHashMask;
+  // return expected_value & leaktracer::kHashMask;
   // <<
 }
 
@@ -171,7 +171,7 @@ int32_t Object::IdentityHashCode() const {
         DCHECK_EQ(hash_word.GetState(), LockWord::kHashCode);
         if (const_cast<Object*>(this)->CasLockWordWeakRelaxed(lw, hash_word)) {
           // *waanan*
-          return hash_word.GetHashCode() & leaktracer::kHashMask;
+          return hash_word.GetHashCode();
         }
         break;
       }
@@ -191,11 +191,11 @@ int32_t Object::IdentityHashCode() const {
         Monitor* monitor = lw.FatLockMonitor();
         DCHECK(monitor != nullptr);
         // *waanan*
-        return monitor->GetHashCode() & leaktracer::kHashMask;
+        return monitor->GetHashCode();
       }
       case LockWord::kHashCode: {
         // *waanan*
-        return lw.GetHashCode() & leaktracer::kHashMask;
+        return lw.GetHashCode();
       }
       default: {
         LOG(FATAL) << "Invalid state during hashcode " << lw.GetState();
@@ -208,25 +208,19 @@ int32_t Object::IdentityHashCode() const {
 
   // *waanan*
   // return if object is accessed and clear AccessBit
-bool Object::isLTAccessed() {
-  if (monitor_ == 0) {
-    return false;
-  } else {
-    uint32_t type = monitor_ & leaktracer::kAccessMask;
-    if (type == leaktracer::kAccessThin || type == leaktracer::kAccessFat) {
-      return true;
-    } else if (type == leaktracer::kAccessHash) {
-      bool result = monitor_ & leaktracer::kAccessBit;
-      if (result) {
-        monitor_ &= ~leaktracer::kAccessBit;
-      }
-      return result;
-    } else {
-      return false;
-    }
-  }
-}
-// <<
+  // bool Object::isLTAccessed() {
+  //   uint32_t type = monitor_ & leaktracer::kAccessMask;
+  //   if (type != leaktracer::kAccessMask) {
+  //     bool result = monitor_ & leaktracer::kAccessBit;
+  //     if (result) {
+  //       monitor_ &= ~leaktracer::kAccessBit;
+  //     }
+  //     return result;
+  //   } else {
+  //     return false;
+  //   }
+  // }
+  // <<
 
 
 void Object::CheckFieldAssignmentImpl(MemberOffset field_offset, Object* new_value) {

@@ -555,7 +555,8 @@ class Mir2Lir {
      * @param really generate code if really is true, otherwise nothing happens
      *        when calling this function.
      */
-    void GenSetAccessBit(const RegStorage& ref, bool really);
+    void GenSetAccessBit(const RegLocation& ref, bool really);
+    // void GenSetAccessBit(const RegStorage& ref, bool really);
     // @brief Generage code to clear the least bit of the value in register klass.
     // @param klass is the class pointer valie.
     // void GenClearAccessBit(const RegStorage& klass, bool really);
@@ -1160,7 +1161,14 @@ class Mir2Lir {
     virtual LIR* CheckSuspendUsingLoad() = 0;
 
     virtual RegStorage LoadHelper(QuickEntrypointEnum trampoline) = 0;
-
+    // *waanan*
+    virtual RegStorage ltLoadHelper(int funAddr) {
+      if (funAddr) {
+      }
+      RegStorage temp = AllocTemp();
+      return temp;
+    }
+    // <<
     virtual LIR* LoadBaseDisp(RegStorage r_base, int displacement, RegStorage r_dest,
                               OpSize size, VolatileKind is_volatile) = 0;
     virtual LIR* LoadBaseIndexed(RegStorage r_base, RegStorage r_index, RegStorage r_dest,

@@ -42,6 +42,7 @@
 #include "debugger.h"
 #include "dex_file-inl.h"
 #include "entrypoints/entrypoint_utils.h"
+#include "entrypoints/math_entrypoints.h"
 #include "entrypoints/quick/quick_alloc_entrypoints.h"
 #include "gc_map.h"
 #include "gc/accounting/card_table-inl.h"
@@ -108,6 +109,9 @@ void Thread::InitTlsEntryPoints() {
   }
   InitEntryPoints(&tlsPtr_.interpreter_entrypoints, &tlsPtr_.jni_entrypoints,
                   &tlsPtr_.quick_entrypoints);
+  // *waanan* Record Obj access 
+  tlsPtr_.ltAccessObj = art_lt_acc_obj;
+  // <<
 }
 
 void Thread::InitStringEntryPoints() {

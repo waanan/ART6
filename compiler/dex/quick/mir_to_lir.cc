@@ -608,18 +608,30 @@ void Mir2Lir::CompileDalvikInstruction(MIR* mir, BasicBlock* bb, LIR* label_list
       break;
 
     case Instruction::MONITOR_ENTER:
+      // *waanan*
+      GenSetAccessBit(rl_src[0], true);
+      // <<
       GenMonitorEnter(opt_flags, rl_src[0]);
       break;
 
     case Instruction::MONITOR_EXIT:
+      // *waanan*
+      GenSetAccessBit(rl_src[0], true);
+      // <<
       GenMonitorExit(opt_flags, rl_src[0]);
       break;
 
     case Instruction::CHECK_CAST: {
+      // *waanan*
+      GenSetAccessBit(rl_src[0], true);
+      // <<
       GenCheckCast(opt_flags, mir->offset, vB, rl_src[0]);
       break;
     }
     case Instruction::INSTANCE_OF:
+      // *waanan*
+      GenSetAccessBit(rl_src[0], true);
+      // <<
       GenInstanceof(vC, rl_dest, rl_src[0]);
       break;
 
@@ -632,14 +644,14 @@ void Mir2Lir::CompileDalvikInstruction(MIR* mir, BasicBlock* bb, LIR* label_list
       break;
 
     case Instruction::ARRAY_LENGTH: {
+      // *waanan*
+      GenSetAccessBit(rl_src[0], true);
+      // <<
       int len_offset;
       len_offset = mirror::Array::LengthOffset().Int32Value();
       rl_src[0] = LoadValue(rl_src[0], kRefReg);
       GenNullCheck(rl_src[0].reg, opt_flags);
       rl_result = EvalLoc(rl_dest, kCoreReg, true);
-      // *waanan*
-      GenSetAccessBit(rl_src[0].reg, true);
-      // <<
       Load32Disp(rl_src[0].reg, len_offset, rl_result.reg);
       MarkPossibleNullPointerException(opt_flags);
       StoreValue(rl_dest, rl_result);
@@ -1465,30 +1477,47 @@ Mir2Lir::ShortyArg Mir2Lir::InToRegStorageMapping::GetShorty(size_t in_position)
 }
 
   // *waanan*
-  void Mir2Lir::GenSetAccessBit(const RegStorage& base, bool really) {
+  void Mir2Lir::GenSetAccessBit(const RegLocation& arg0, bool really) {
     if (really) {
-      RegStorage hash_code = AllocTemp();
-
-      if (hash_code.Valid()) {
-        // LIR* target;
-        // const int hOffset = mirror::Object::MonitorOffset().Int32Value();
-        // Load32Disp(base, hOffset, hash_code);
-        // OpRegRegImm(kOpAnd, hash_code, hash_code, leaktracer::kAccessMask);
-        // OpRegImm(kOpCmp, hash_code, leaktracer::kAccessHash);
-        // LIR* branch = OpCondBranch(kCondNe, nullptr);
-        // Load32Disp(base, hOffset, hash_code);
-        // OpRegRegImm(kOpOr, hash_code, hash_code, leaktracer::kAccessBit);
-        // Store32Disp(base, hOffset, hash_code);
-        // target = NewLIR0(kPseudoTargetLabel);
-        // FreeTemp(hash_code);
-        // branch->target = target;
-
-        const int hOffset = mirror::Object::MonitorOffset().Int32Value();
-        Load32Disp(base, hOffset, hash_code);
-        OpRegRegImm(kOpOr, hash_code, hash_code, 0);
-        Store32Disp(base, hOffset, hash_code);
-        FreeTemp(hash_code);
+      FlushAllRegs();
+      RegStorage r_tgt = ltLoadHelper(1112);
+      if (arg0.wide == 0) {
+        LoadValueDirectFixed(arg0, TargetReg(arg0.fp ? kFArg0 : kArg0, arg0));
+      } else {
+        LoadValueDirectWideFixed(arg0, TargetReg(arg0.fp ? kFArg0 : kArg0, kWide));
       }
+      ClobberCallerSave();
+      OpReg(kOpBlx, r_tgt);
+
+      if (r_tgt.Valid()) {
+	FreeTemp(r_tgt);
+      }
+
+    //  FlushAllRegs();  /* Everything to home location */
+    //  CallRuntimeHelperRegLocation(kQuickLtAccessObj, base, false);
+
+    //   RegStorage hash_code = AllocTemp();
+
+    //   if (hash_code.Valid()) {
+    //     // LIR* target;
+    //     // const int hOffset = mirror::Object::MonitorOffset().Int32Value();
+    //     // Load32Disp(base, hOffset, hash_code);
+    //     // OpRegRegImm(kOpAnd, hash_code, hash_code, leaktracer::kAccessMask);
+    //     // OpRegImm(kOpCmp, hash_code, leaktracer::kAccessHash);
+    //     // LIR* branch = OpCondBranch(kCondNe, nullptr);
+    //     // Load32Disp(base, hOffset, hash_code);
+    //     // OpRegRegImm(kOpOr, hash_code, hash_code, leaktracer::kAccessBit);
+    //     // Store32Disp(base, hOffset, hash_code);
+    //     // target = NewLIR0(kPseudoTargetLabel);
+    //     // FreeTemp(hash_code);
+    //     // branch->target = target;
+
+    //     const int hOffset = mirror::Object::MonitorOffset().Int32Value();
+    //     Load32Disp(base, hOffset, hash_code);
+    //     OpRegRegImm(kOpOr, hash_code, hash_code, 0);
+    //     Store32Disp(base, hOffset, hash_code);
+    //     FreeTemp(hash_code);
+    //   }
     }
   }
 

@@ -169,6 +169,9 @@ void InitEntryPoints(InterpreterEntryPoints* ipoints, JniEntryPoints* jpoints,
 
   // Read barrier
   qpoints->pReadBarrierJni = ReadBarrierJni;
+
+  // *waanan* LT Object Access
+  // qpoints->pLtAccessObj = art_lt_acc_obj;
 }
 
 }  // namespace art

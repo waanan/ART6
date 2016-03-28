@@ -1292,7 +1292,7 @@ class Thread {
     // see arch/arm/quick_entrypoints_arm.S about
     // TWO_ARG_DOWNCALL and THREE_ARG_DOWNCALL macros.
     uint32_t alloc_site;
-
+    void (*ltAccessObj) (void*);
     // current allocating array object size, only nonzero for array objects.
     size_t array_alloc_size;
     bool is_large_obj;

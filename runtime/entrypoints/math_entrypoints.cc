@@ -18,6 +18,10 @@
 
 #include "entrypoint_utils-inl.h"
 
+// *waanan*
+#include "leaktracer/leaktracer.h"
+// <<
+
 namespace art {
 
 extern "C" double art_l2d(int64_t l) {
@@ -47,5 +51,15 @@ extern "C" int32_t art_d2i(double d) {
 extern "C" int32_t art_f2i(float f) {
   return art_float_to_integral<int32_t, float>(f);
 }
+
+// *waanan* acc obj entrypoint
+extern "C" void art_lt_acc_obj(void* obj) {
+  if (leaktracer::gLeakTracerIsTracking) {
+    leaktracer::LeakTracer *instance = leaktracer::LeakTracer::Instance();
+    instance->AccessObject(obj);
+  }
+  return;
+}
+// <<
 
 }  // namespace art

@@ -16,8 +16,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <vector>
 #include <set>
 #include <fstream>
@@ -31,10 +31,10 @@
 #include "mirror/object_array-inl.h"
 #include "mirror/class-inl.h"
 #include "thread.h"
-#include <signal.h>
+// #include <signal.h>
 
 #include "leaktracer.h"
-#include "ac_defs.h"
+
 
 #define LARGE_OBJECT_SPACE_BEGIN reinterpret_cast<unsigned>(Runtime::Current()->GetHeap()->GetLargeObjectsSpace()->Begin())
 #define PRINT(fp, ...) do {                     \
@@ -210,8 +210,8 @@ namespace art {
 
     void LeakTracer::NewObject(void *addr, size_t size) {
       if (gLeakTracerIsTracking && !gLogOnly) {
-        mirror::Object* obj = reinterpret_cast<mirror::Object*>(addr);
-        const uint32_t monitor = obj->GetM();
+        // mirror::Object* obj = reinterpret_cast<mirror::Object*>(addr);
+        // const uint32_t monitor = obj->GetM();
         // ReaderMutexLock mu(Thread::Current(), *Locks::mutator_lock_);
         // switch (obj->GetLockWord(false).GetState())
 
@@ -238,7 +238,7 @@ namespace art {
           // ALOGD("Meeting Array Object: %p  Size: %d\n", addr, (int)size);
         }
 
-        u32 data[5], count = 0;
+        u32 data[4], count = 0;
         data[count++] = reinterpret_cast<uintptr_t>(addr);
         data[count++] = reinterpret_cast<uint32_t>(self->GetAllocSite());
         if (obj_kind != kNormalObject) {
@@ -247,7 +247,7 @@ namespace art {
         } else {
           data[count++] = reinterpret_cast<uint32_t>(klass);
         }
-        data[count++] = monitor;
+        // data[count++] = monitor;
         WriteSafe(data, count * sizeof(data[0]));
         NewClass(reinterpret_cast<mirror::Class*>(klass));
       }
@@ -276,11 +276,17 @@ namespace art {
           // ALOGD("ACCESS: %p\n", addr);
         } else {
           u32 data = reinterpret_cast<uintptr_t>(addr) | kAccessObject;
-          WriteSafe(&data, sizeof data);
-          mirror::Object* obj = reinterpret_cast<mirror::Object*>(addr);
-          uint32_t monitor = obj->GetM();
-	  WriteSafe(&monitor, sizeof monitor);
-        }
+	  acc_sets.insert(data);
+	  // if (acc_objs.size() % 400 == 0) {
+	  //   int x = acc_objs.size();
+	  //   ALOGD("Accessed Objs %d   %d\n", x, acc_count);
+	  // }
+          // u32 data = reinterpret_cast<uintptr_t>(addr) | kAccessObject;
+          // WriteSafe(&data, sizeof data);
+	  // mirror::Object* obj = reinterpret_cast<mirror::Object*>(addr);
+          // uint32_t monitor = obj->GetM();
+	  // WriteSafe(&monitor, sizeof monitor);
+        } 
       }
     }
 
@@ -398,6 +404,14 @@ namespace art {
         if (gLogOnly) {
           ALOGD("%s\n", __FUNCTION__);
         } else {
+	  int n =  acc_sets.size();
+	  for (auto x : acc_sets) {
+	    WriteSafe(&x, sizeof x);
+	  }
+	  ALOGD("Accessed Objs %d\n", n);
+	  ALOGD("Bucket   Count %d\n", (int)acc_sets.bucket_count());
+	  ALOGD("Load     Factor %f\n", acc_sets.load_factor());  
+	  acc_sets.clear();
           uint32_t raw = kGcEnd;
           WriteSafe(&raw, sizeof raw);
         }
@@ -510,9 +524,13 @@ namespace art {
       :data_fp_(nullptr),
       class_fp_(nullptr),
       proc_name_(proc_name),
-      num_gc_(0U) {
-      // gc_thread_pool_ = Runtime::Current()->GetHeap()->GetThreadPool();
-      ALOGD("%s\n", __FUNCTION__);
+      num_gc_(0U),
+      acc_sets(9000) {
+        // gc_thread_pool_ = Runtime::Current()->GetHeap()->GetThreadPool();
+        ALOGD("MaxSize %d\n", (int)acc_sets.max_size());
+        ALOGD("MaxBucketCount %d\n", (int)acc_sets.bucket_count());
+        ALOGD("MaxSize %f\n", acc_sets.load_factor());      
+        ALOGD("%s\n", __FUNCTION__);
     }
 
 

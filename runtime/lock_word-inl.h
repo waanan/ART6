@@ -31,13 +31,17 @@ inline uint32_t LockWord::ThinLockOwner() const {
 inline uint32_t LockWord::ThinLockCount() const {
   DCHECK_EQ(GetState(), kThinLocked);
   CheckReadBarrierState();
+  // *waanan*
   return (value_ >> kThinLockCountShift) & kThinLockCountMask;
+  // <<
 }
 
 inline Monitor* LockWord::FatLockMonitor() const {
   DCHECK_EQ(GetState(), kFatLocked);
   CheckReadBarrierState();
+  // *waanan*
   MonitorId mon_id = (value_ >> kMonitorIdShift) & kMonitorIdMask;
+  // <<
   return MonitorPool::MonitorFromMonitorId(mon_id);
 }
 

@@ -68,6 +68,12 @@ class ArmMir2Lir FINAL : public Mir2Lir {
                                      int64_t constant) OVERRIDE;
     LIR* CheckSuspendUsingLoad() OVERRIDE;
     RegStorage LoadHelper(QuickEntrypointEnum trampoline) OVERRIDE;
+    // *waanan*
+    RegStorage ltLoadHelper(int funAddr) {
+      LoadWordDisp(rs_rARM_SELF, funAddr, rs_rARM_LR);
+      return rs_rARM_LR;
+    }
+    // <<
     LIR* LoadBaseDisp(RegStorage r_base, int displacement, RegStorage r_dest,
                       OpSize size, VolatileKind is_volatile) OVERRIDE;
     LIR* LoadBaseIndexed(RegStorage r_base, RegStorage r_index, RegStorage r_dest, int scale,
